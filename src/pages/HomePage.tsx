@@ -36,11 +36,17 @@ import {
   X,
   Trash2,
   Lock,
-  ClipboardCheck
+  ClipboardCheck,
+  FileText,
+  QrCode,
+  Wrench,
+  Clock
 } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 import { VolunteerIntakeForm, InternshipIntakeForm, WorkLogForm } from '../components/M11Forms';
 import { CampaignSubmissionForm, EventRSVPForm } from '../components/M12Forms';
+import { ExpertOnboardingForm, PatientIntakeForm, EPrescriptionForm } from '../components/TeleBridgeForms';
+import { FacilityBookingForm, AttendanceForm, VisitorSecurityLog, AssetMaintenanceLog } from '../components/CampusForms';
 
 const Modal = ({ isOpen, onClose, title, children }: any) => (
   <AnimatePresence>
@@ -120,7 +126,9 @@ export default function HomePage() {
     referrals: 12450,
     ngos: 450,
     students: 2100,
-    meals: 5800
+    meals: 5800,
+    study_hours: 1240,
+    expert_sessions: 850
   });
 
   const [wishItems, setWishItems] = useState<any[]>([]);
@@ -128,7 +136,26 @@ export default function HomePage() {
   const [emergencyHide, setEmergencyHide] = useState(false);
   const [showErasureModal, setShowErasureModal] = useState(false);
   const [erasureEmail, setErasureEmail] = useState('');
-  const [activeForm, setActiveForm] = useState<string | null>(null);
+  const [activeForm, setActiveForm] = useState<
+    'volunteer' | 'internship' | 'worklog' | 'campaign' | 'rsvp' | 
+    'expert' | 'patient' | 'prescription' | 'booking' | 'attendance' | 'visitor' | 'asset' | null
+  >(null);
+
+  // M9 Phase 4: 72-Hour "Orphaned Referral" Timeout & SOS Sync
+  useEffect(() => {
+    const checkReferralTimeouts = () => {
+      // Mock logic: In a real app, this would fetch from M5 Ledger
+      const lastReferralTime = localStorage.getItem('last_referral_time');
+      if (lastReferralTime) {
+        const hoursElapsed = (Date.now() - parseInt(lastReferralTime)) / (1000 * 60 * 60);
+        if (hoursElapsed > 72) {
+          // Trigger SOS Alert
+          console.warn("M9 Referral Timeout: Escalating to Tele-MANAS (14416)");
+        }
+      }
+    };
+    checkReferralTimeouts();
+  }, []);
 
   useEffect(() => {
     const safeFetch = async (url: string, setter: (data: any) => void, errorLabel: string) => {
@@ -449,9 +476,11 @@ export default function HomePage() {
           {[
             { id: '1', title: 'Master Beneficiary & Student', icon: GraduationCap, desc: 'Primary registration for all SAMBAL support services.', type: 'link', to: '/forms/1' },
             { id: '2', title: 'Volunteer Induction', icon: Users, desc: 'Join our national network of verified Sneh-Rakshaks.', type: 'modal', form: 'volunteer' },
-            { id: '21', title: 'Internship Application', icon: GraduationCap, desc: 'University students and professional talent intake.', type: 'modal', form: 'internship' },
-            { id: 'M12-C', title: 'Campaign Content', icon: Megaphone, desc: 'Submit awareness content for review and publication.', type: 'modal', form: 'campaign' },
-            { id: 'M12-E', title: 'Event RSVP', icon: Calendar, desc: 'Register for upcoming physical events and workshops.', type: 'modal', form: 'rsvp' },
+            { id: '6', title: 'Expert Onboarding', icon: ShieldCheck, desc: 'Mental health professionals joining the M9 expert panel.', type: 'modal', form: 'expert' },
+            { id: '9', title: 'Patient Intake', icon: HeartPulse, desc: 'Initial clinical assessment for mental health support.', type: 'modal', form: 'patient' },
+            { id: '13', title: 'Campus Facility Booking', icon: Building2, desc: 'Reserve halls or rooms at the Lucknow Center.', type: 'modal', form: 'booking' },
+            { id: '32', title: 'E-Prescription', icon: FileText, desc: 'Restricted: Clinical expert prescription generator.', type: 'modal', form: 'prescription' },
+            { id: 'M10-A', title: 'Daily Attendance', icon: QrCode, desc: 'Sukh-Shiksha scholar attendance & meal log.', type: 'modal', form: 'attendance' },
             { id: 'M11-W', title: 'Daily Work Log', icon: ClipboardCheck, desc: 'Submit daily progress reports for active volunteers.', type: 'modal', form: 'worklog' },
           ].map((form, i) => (
             <motion.div
@@ -477,7 +506,7 @@ export default function HomePage() {
                 </Link>
               ) : (
                 <button 
-                  onClick={() => setActiveForm(form.form!)}
+                  onClick={() => setActiveForm(form.form as any)}
                   className="inline-flex items-center gap-2 text-ngo-primary font-bold text-sm uppercase tracking-widest hover:gap-3 transition-all"
                 >
                   Open Form {form.id} <ArrowRight size={18} />
@@ -566,9 +595,17 @@ export default function HomePage() {
                 </div>
                 <h4 className="font-bold text-slate-900 mb-2">Bio-Well Wellness Scans</h4>
                 <p className="text-xs text-slate-500 mb-4">Advanced energy field analysis and stress reporting for individuals.</p>
-                <Link to="/wellness" className="text-ngo-primary text-xs font-bold uppercase tracking-widest flex items-center gap-2 hover:gap-3 transition-all">
-                  Book Scan <ArrowRight size={14} />
-                </Link>
+                <div className="flex flex-col gap-2">
+                  <Link to="/wellness" className="text-ngo-primary text-xs font-bold uppercase tracking-widest flex items-center gap-2 hover:gap-3 transition-all">
+                    Book Scan <ArrowRight size={14} />
+                  </Link>
+                  <button 
+                    onClick={() => setActiveForm('asset')}
+                    className="text-slate-400 text-[10px] font-bold uppercase tracking-widest flex items-center gap-2 hover:text-slate-600 transition-all"
+                  >
+                    Log Maintenance <Wrench size={12} />
+                  </button>
+                </div>
               </div>
               <div className="p-6 rounded-3xl bg-white border border-slate-100 shadow-sm hover:shadow-md transition-all">
                 <div className="w-12 h-12 rounded-2xl bg-blue-100 text-blue-600 flex items-center justify-center mb-4">
@@ -576,9 +613,19 @@ export default function HomePage() {
                 </div>
                 <h4 className="font-bold text-slate-900 mb-2">Resource Rentals</h4>
                 <p className="text-xs text-slate-500 mb-4">Premium hall rentals and Joy Room access for community events.</p>
-                <Link to="/lucknow-center" className="text-ngo-primary text-xs font-bold uppercase tracking-widest flex items-center gap-2 hover:gap-3 transition-all">
-                  Rent Space <ArrowRight size={14} />
-                </Link>
+                <div className="flex flex-col gap-2">
+                  <button 
+                    onClick={() => setActiveForm('booking')}
+                    className="text-ngo-primary text-xs font-bold uppercase tracking-widest flex items-center gap-2 hover:gap-3 transition-all"
+                  >
+                    Rent Space <ArrowRight size={14} />
+                  </button>
+                  <button 
+                    className="text-indigo-600 text-[10px] font-bold uppercase tracking-widest flex items-center gap-2 hover:text-indigo-800 transition-all"
+                  >
+                    Virtual Joy Room <Smile size={12} />
+                  </button>
+                </div>
               </div>
             </div>
           </div>
@@ -680,14 +727,14 @@ export default function HomePage() {
             className="flex whitespace-nowrap gap-16 items-center px-8"
           >
             {[
-              { label: "Total SAMBAL Referrals Generated", value: `${impactStats.referrals.toLocaleString()}+` },
-              { label: "Verified NGO Partners (Silver/Gold)", value: `${impactStats.ngos.toLocaleString()}+` },
-              { label: "Vatsalya & Saathi Students Enrolled", value: `${impactStats.students.toLocaleString()}+` },
+              { label: "Total SAMBAL Referrals Generated", value: `${(impactStats?.referrals ?? 0).toLocaleString()}+` },
+              { label: "Verified NGO Partners (Silver/Gold)", value: `${(impactStats?.ngos ?? 0).toLocaleString()}+` },
+              { label: "Vatsalya & Saathi Students Enrolled", value: `${(impactStats?.students ?? 0).toLocaleString()}+` },
               { label: "Bio-Well Health Scans Conducted", value: "5,800+" },
-              { label: "Mid-Day Meals Served (Lucknow)", value: `${impactStats.meals.toLocaleString()}+` },
-              { label: "Total SAMBAL Referrals Generated", value: `${impactStats.referrals.toLocaleString()}+` },
-              { label: "Verified NGO Partners (Silver/Gold)", value: `${impactStats.ngos.toLocaleString()}+` },
-              { label: "Vatsalya & Saathi Students Enrolled", value: `${impactStats.students.toLocaleString()}+` },
+              { label: "Mid-Day Meals Served (Lucknow)", value: `${(impactStats?.meals ?? 0).toLocaleString()}+` },
+              { label: "Total SAMBAL Referrals Generated", value: `${(impactStats?.referrals ?? 0).toLocaleString()}+` },
+              { label: "Verified NGO Partners (Silver/Gold)", value: `${(impactStats?.ngos ?? 0).toLocaleString()}+` },
+              { label: "Vatsalya & Saathi Students Enrolled", value: `${(impactStats?.students ?? 0).toLocaleString()}+` },
             ].map((m, i) => (
               <div key={i} className="flex items-center gap-4">
                 <span className="text-ngo-primary font-bold text-2xl">{m.value}</span>
@@ -1082,8 +1129,16 @@ export default function HomePage() {
             </p>
             <div className="flex flex-wrap gap-4">
               <div className="bg-white/10 backdrop-blur-sm px-6 py-4 rounded-2xl border border-white/20">
-                <div className="text-3xl font-bold">200k+</div>
-                <div className="text-xs uppercase tracking-wider opacity-60">Schemes Mapped</div>
+                <div className="text-3xl font-bold">{(impactStats?.meals ?? 0).toLocaleString()}</div>
+                <div className="text-xs uppercase tracking-wider opacity-60">Meals Served</div>
+              </div>
+              <div className="bg-white/10 backdrop-blur-sm px-6 py-4 rounded-2xl border border-white/20">
+                <div className="text-3xl font-bold">{(impactStats?.study_hours ?? 0).toLocaleString()}</div>
+                <div className="text-xs uppercase tracking-wider opacity-60">Study Hours</div>
+              </div>
+              <div className="bg-white/10 backdrop-blur-sm px-6 py-4 rounded-2xl border border-white/20">
+                <div className="text-3xl font-bold">{(impactStats?.expert_sessions ?? 0).toLocaleString()}</div>
+                <div className="text-xs uppercase tracking-wider opacity-60">Expert Sessions</div>
               </div>
               <div className="bg-white/10 backdrop-blur-sm px-6 py-4 rounded-2xl border border-white/20">
                 <div className="text-3xl font-bold">Lucknow</div>
@@ -1121,43 +1176,35 @@ export default function HomePage() {
       {/* Erasure Modal */}
       {/* Registration Modals */}
       <Modal 
-        isOpen={activeForm === 'volunteer'} 
-        onClose={() => setActiveForm(null)} 
-        title="Sneh-Rakshak Registration"
+        isOpen={activeForm !== null} 
+        onClose={() => setActiveForm(null)}
+        title={
+          activeForm === 'volunteer' ? 'Sneh-Rakshak Registration' :
+          activeForm === 'internship' ? 'Field Internship Application' :
+          activeForm === 'worklog' ? 'Daily Work Log' :
+          activeForm === 'campaign' ? 'Submit Digital Campaign' :
+          activeForm === 'rsvp' ? 'Event RSVP' :
+          activeForm === 'expert' ? 'Expert Onboarding' :
+          activeForm === 'patient' ? 'Mental Health Intake' :
+          activeForm === 'prescription' ? 'E-Prescription Generator' :
+          activeForm === 'booking' ? 'Campus Facility Booking' :
+          activeForm === 'attendance' ? 'Daily Attendance' :
+          activeForm === 'visitor' ? 'Visitor Security Log' :
+          activeForm === 'asset' ? 'Asset Maintenance Log' : 'Form'
+        }
       >
-        <VolunteerIntakeForm onSuccess={() => setTimeout(() => setActiveForm(null), 2000)} />
-      </Modal>
-
-      <Modal 
-        isOpen={activeForm === 'internship'} 
-        onClose={() => setActiveForm(null)} 
-        title="Internship Application"
-      >
-        <InternshipIntakeForm onSuccess={() => setTimeout(() => setActiveForm(null), 2000)} />
-      </Modal>
-
-      <Modal 
-        isOpen={activeForm === 'campaign'} 
-        onClose={() => setActiveForm(null)} 
-        title="Submit Campaign Content"
-      >
-        <CampaignSubmissionForm onSuccess={() => setTimeout(() => setActiveForm(null), 2000)} />
-      </Modal>
-
-      <Modal 
-        isOpen={activeForm === 'rsvp'} 
-        onClose={() => setActiveForm(null)} 
-        title="Event RSVP"
-      >
-        <EventRSVPForm eventId={1} onSuccess={() => setTimeout(() => setActiveForm(null), 2000)} />
-      </Modal>
-
-      <Modal 
-        isOpen={activeForm === 'worklog'} 
-        onClose={() => setActiveForm(null)} 
-        title="Daily Work Log"
-      >
-        <WorkLogForm onSuccess={() => setTimeout(() => setActiveForm(null), 2000)} />
+        {activeForm === 'volunteer' && <VolunteerIntakeForm onSuccess={() => setTimeout(() => setActiveForm(null), 2000)} />}
+        {activeForm === 'internship' && <InternshipIntakeForm onSuccess={() => setTimeout(() => setActiveForm(null), 2000)} />}
+        {activeForm === 'worklog' && <WorkLogForm onSuccess={() => setTimeout(() => setActiveForm(null), 2000)} />}
+        {activeForm === 'campaign' && <CampaignSubmissionForm onSuccess={() => setTimeout(() => setActiveForm(null), 2000)} />}
+        {activeForm === 'rsvp' && <EventRSVPForm eventId={1} onSuccess={() => setTimeout(() => setActiveForm(null), 2000)} />}
+        {activeForm === 'expert' && <ExpertOnboardingForm onSuccess={() => setTimeout(() => setActiveForm(null), 2000)} />}
+        {activeForm === 'patient' && <PatientIntakeForm onSuccess={() => setTimeout(() => setActiveForm(null), 2000)} />}
+        {activeForm === 'prescription' && <EPrescriptionForm />}
+        {activeForm === 'booking' && <FacilityBookingForm onSuccess={() => setTimeout(() => setActiveForm(null), 2000)} />}
+        {activeForm === 'attendance' && <AttendanceForm onSuccess={() => setTimeout(() => setActiveForm(null), 2000)} />}
+        {activeForm === 'visitor' && <VisitorSecurityLog />}
+        {activeForm === 'asset' && <AssetMaintenanceLog />}
       </Modal>
 
       <Modal 
