@@ -29,6 +29,8 @@ import {
   Calendar
 } from 'lucide-react';
 import { VideoKYCBlock } from './YuwaSewaForms';
+import { StaffIncidentLog } from './StaffIncidentLog';
+import { UserRole, M5Status } from '../types';
 
 // 1. NGO Onboarding Queue (M8 Phase 2)
 const NGOOnboardingQueue = () => {
@@ -120,6 +122,11 @@ const FinancialLedger = () => {
   ]);
 
   const handleApproval = (id: string, type: 'verify' | 'approve') => {
+    const txn = transactions.find(t => t.id === id);
+    if (type === 'approve' && !txn?.verified) {
+      alert("M8 Security: Cannot approve before HQ Finance verification (Four-Eyes Principle).");
+      return;
+    }
     alert(`M8 Security: ${type === 'verify' ? 'HQ Finance' : 'Super Admin'} ${type}d transaction ${id}.`);
     setTransactions(transactions.map(t => {
       if (t.id === id) {
@@ -415,10 +422,64 @@ const YuwaRankedDashboard = () => {
   );
 };
 
+// 6. Looker Studio Dashboard Embeds (M5 Phase 6)
+const LookerDashboard = ({ title, type }: { title: string, type: string }) => (
+  <div className="bg-white rounded-[2rem] border border-slate-100 overflow-hidden shadow-sm h-[600px] flex flex-col">
+    <div className="p-6 border-b border-slate-50 flex items-center justify-between bg-slate-50/50">
+      <h3 className="font-bold text-slate-900 flex items-center gap-2">
+        <TrendingUp className="text-indigo-600" size={20} />
+        {title}
+      </h3>
+      <div className="flex items-center gap-2 px-3 py-1 bg-indigo-50 text-indigo-700 rounded-full text-[10px] uppercase font-bold tracking-wider">
+        <ShieldCheck size={12} /> Role-Gated: {type}
+      </div>
+    </div>
+    <div className="flex-1 bg-slate-50 flex items-center justify-center p-12 text-center">
+      <div className="max-w-xs">
+        <div className="w-16 h-16 bg-white rounded-2xl shadow-sm flex items-center justify-center mx-auto mb-4">
+          <ExternalLink className="text-slate-300" size={32} />
+        </div>
+        <h4 className="text-slate-900 font-bold mb-2">Looker Studio Embed</h4>
+        <p className="text-xs text-slate-500 leading-relaxed">
+          Native Gutenberg Block: Connecting to M5 Master Ledger. Sanitized data view for {type}.
+        </p>
+      </div>
+    </div>
+  </div>
+);
+
 // Main M8 Dashboard Component
 export const AdminDashboard = () => {
-  const [activeTab, setActiveTab] = useState<'overview' | 'ngos' | 'finance' | 'yuwa' | 'security'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'ngos' | 'finance' | 'yuwa' | 'security' | 'staff_log'>('overview');
   const [isInducted, setIsInducted] = useState(false);
+  const [m5Status, setM5Status] = useState<M5Status>({
+    webhookStatus: 'Green',
+    zohoInvoiceCount: 42,
+    lastSync: new Date().toISOString()
+  });
+
+  const userRole = UserRole.SUPER_ADMIN; // Mocked for now
+  const userId = 'ADMIN-001'; // Mocked for now
+
+  const renderM5StatusWidget = () => (
+    <div className="bg-white p-4 rounded-[2rem] border border-slate-100 shadow-sm mb-8 flex items-center justify-between">
+      <div className="flex items-center gap-6">
+        <div className="flex items-center gap-2">
+          <div className={`w-3 h-3 rounded-full ${m5Status.webhookStatus === 'Green' ? 'bg-emerald-500 animate-pulse' : 'bg-rose-500'}`} />
+          <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">M5 Webhook Status</span>
+        </div>
+        <div className="h-4 w-px bg-slate-100" />
+        <div className="flex items-center gap-2">
+          <Building2 className="w-4 h-4 text-indigo-500" />
+          <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Zoho Invoices: {m5Status.zohoInvoiceCount}/1000</span>
+        </div>
+      </div>
+      <div className="text-[10px] text-slate-400 font-mono flex items-center gap-2">
+        <History size={12} />
+        Last Sync: {new Date(m5Status.lastSync).toLocaleTimeString()}
+      </div>
+    </div>
+  );
 
   // M8 Security Prerequisite: Digital Oath Induction
   if (!isInducted) {
@@ -457,6 +518,7 @@ export const AdminDashboard = () => {
 
   return (
     <div className="space-y-8 p-6 lg:p-12 bg-slate-50/50 min-h-screen">
+      {renderM5StatusWidget()}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
         <div>
           <h1 className="text-3xl font-bold text-slate-900 tracking-tight">Impact Dashboard</h1>
@@ -485,7 +547,13 @@ export const AdminDashboard = () => {
             onClick={() => setActiveTab('finance')}
             className={`px-4 py-2 rounded-xl text-xs font-bold transition-all whitespace-nowrap ${activeTab === 'finance' ? 'bg-ngo-primary text-white' : 'text-slate-500 hover:bg-slate-50'}`}
           >
-            Financials
+            <IndianRupee size={18} /> Financials
+          </button>
+          <button 
+            onClick={() => setActiveTab('staff_log')}
+            className={`px-4 py-2 rounded-xl text-xs font-bold transition-all whitespace-nowrap ${activeTab === 'staff_log' ? 'bg-ngo-primary text-white' : 'text-slate-500 hover:bg-slate-50'}`}
+          >
+            <AlertTriangle size={18} /> Staff Log
           </button>
         </div>
       </div>
@@ -526,12 +594,14 @@ export const AdminDashboard = () => {
                   </div>
                 </div>
               </div>
+              <LookerDashboard title="Chairman's Master UI" type="Super Admin" />
               <NGOOnboardingQueue />
             </>
           )}
           {activeTab === 'ngos' && <NGOOnboardingQueue />}
           {activeTab === 'yuwa' && <YuwaRankedDashboard />}
           {activeTab === 'finance' && <FinancialLedger />}
+          {activeTab === 'staff_log' && <StaffIncidentLog userRole={userRole} userId={userId} />}
         </div>
 
         <div className="space-y-8">

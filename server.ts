@@ -1229,6 +1229,56 @@ app.post('/api/m12/event-rsvp', (req, res) => {
   }
 });
 
+// M5 Master Ledger Webhook (Phase 1)
+app.post('/api/m5/webhook', (req, res) => {
+  const { formId, data, metadata } = req.body;
+  console.log(`[M5 Webhook] Routing Form ${formId} to Master Ledger...`);
+  
+  try {
+    const insertLedger = db.prepare('INSERT INTO m5_master_ledger (module, action, details) VALUES (?, ?, ?)');
+    insertLedger.run(formId, 'WEBHOOK_PUSH', JSON.stringify({ ...data, ...metadata }));
+    
+    // Internal Routing Logic (Phase 1.2)
+    if (formId === 'M7_Donation') {
+      const insertFinancial = db.prepare('INSERT INTO financial_ledger (type, amount, description) VALUES (?, ?, ?)');
+      insertFinancial.run('DONATION', data.amount, `Donation from ${data.email}`);
+    } else if (formId === 'M6_Award_Nomination') {
+      const insertYuwa = db.prepare('INSERT INTO yuwa_ledger (userId, points, action) VALUES (?, ?, ?)');
+      insertYuwa.run(data.userId, 0, 'NOMINATION_RECEIVED');
+    }
+    
+    res.json({ status: 'success', message: 'Data routed to M5 Ledger' });
+  } catch (error: any) {
+    console.error('M5 Webhook Error:', error);
+    res.status(500).json({ status: 'error', message: error.message });
+  }
+});
+
+// Phase 0: Tiered Legal Data Shredder (Simulated)
+function runDataShredder() {
+  console.log('[M5 Shredder] Running tiered data retention cleanup...');
+  const now = new Date();
+
+  // Tier 1: General Intake Media (90 Days)
+  const tier1Date = new Date(now.getTime() - (90 * 24 * 60 * 60 * 1000)).toISOString();
+  // In a real app, delete files from storage here
+  console.log(`[M5 Shredder] Tier 1: Purging media older than ${tier1Date}`);
+
+  // Tier 2: Medical Records (3 Years)
+  const tier2Date = new Date(now.getTime() - (3 * 365 * 24 * 60 * 60 * 1000)).toISOString();
+  db.prepare('DELETE FROM e_prescriptions WHERE created_at < ?').run(tier2Date);
+  console.log(`[M5 Shredder] Tier 2: Purged medical records older than ${tier2Date}`);
+
+  // Tier 3: Financial Records (8 Years)
+  const tier3Date = new Date(now.getTime() - (8 * 365 * 24 * 60 * 60 * 1000)).toISOString();
+  // We keep these for 8 years, so we only delete if older than that
+  db.prepare('DELETE FROM financial_ledger WHERE created_at < ?').run(tier3Date);
+  console.log(`[M5 Shredder] Tier 3: Purged financial records older than ${tier3Date}`);
+}
+
+// Run shredder once a day
+setInterval(runDataShredder, 24 * 60 * 60 * 1000);
+
 // Vite Setup
 if (process.env.NODE_ENV !== 'production') {
   createViteServer({

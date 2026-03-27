@@ -1,6 +1,6 @@
 {
   "name": "Remix: SAMBAL National Nodal Hub",
-  "description": "National facilitation hub for NGO connections, expert proctoring, and verified social impact tracking.",
+  "description": "National facilitation hub for NGO connections, expert proctoring, verified social impact tracking, and the M5 Master Data Ledger for DPDP-compliant governance.",
   "requestFramePermissions": [
     "geolocation"
   ]

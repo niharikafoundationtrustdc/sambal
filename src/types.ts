@@ -15,6 +15,8 @@ export enum UserRole {
   // M8 Admin Hierarchy
   STATE_NODAL_HEAD = 'state_nodal_head',
   DISTRICT_NODAL_HEAD = 'district_nodal_head',
+  TRIAGE_DESK = 'triage_desk',
+  COUNSELOR = 'counselor',
   SUPER_ADMIN = 'super_admin',
   M6_VIP_JURY = 'm6_vip_jury',
   M6_JURY_ALUMNI = 'm6_jury_alumni'
@@ -62,6 +64,39 @@ export interface AuditLog {
   action: string;
   resourceId: string;
   timestamp: string;
+}
+
+export interface YuwaCandidate {
+  id: string;
+  name: string;
+  age: number;
+  email: string;
+  phone: string;
+  recommenderName: string;
+  recommenderDesignation: string;
+  juryScores: { juryUin: string; score: number }[];
+  averageScore: number;
+  privilegePoints: number;
+  presidentMarks: number;
+  finalScore: number;
+  status: 'Pending_Verification' | 'Request_Clarification' | 'Verified' | '1st_Prize' | '2nd_Prize' | '3rd_Prize' | 'Consolation' | 'Fraud_Detected';
+  kycStatus: 'Pending' | 'Verified' | 'Fraud';
+  createdAt: string;
+}
+
+export interface IncidentLog {
+  id: string;
+  beneficiaryUin: string;
+  incidentType: 'SOS Protocol' | 'Duplicate Account' | 'Offline Support';
+  actionTaken: 'Helpline Provided' | 'Account Suspended' | 'Escalated to Admin';
+  staffId: string;
+  timestamp: string;
+}
+
+export interface M5Status {
+  webhookStatus: 'Green' | 'Red';
+  zohoInvoiceCount: number;
+  lastSync: string;
 }
 
 export interface Booking {
