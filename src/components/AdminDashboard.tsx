@@ -18,8 +18,17 @@ import {
   AlertTriangle,
   ExternalLink,
   ShieldCheck,
-  UserPlus
+  UserPlus,
+  Award,
+  Video,
+  Star,
+  LayoutDashboard,
+  TrendingUp,
+  Building2,
+  MapPin,
+  Calendar
 } from 'lucide-react';
+import { VideoKYCBlock } from './YuwaSewaForms';
 
 // 1. NGO Onboarding Queue (M8 Phase 2)
 const NGOOnboardingQueue = () => {
@@ -234,6 +243,11 @@ const JuryManagement = () => {
     { id: 'J-02', name: 'Smt. Sunita Devi', role: 'M6_JURY_ALUMNI', sessions: 8 }
   ]);
 
+  const handleRoleChange = (id: string, newRole: string) => {
+    alert(`M6 Automator: Role changed to ${newRole}. Triggering "Letter of Gratitude" recipe.`);
+    setJury(jury.map(j => j.id === id ? { ...j, role: newRole as any } : j));
+  };
+
   return (
     <div className="bg-white p-6 rounded-[2rem] border border-slate-100 shadow-sm">
       <div className="flex items-center justify-between mb-6">
@@ -258,7 +272,15 @@ const JuryManagement = () => {
               </div>
             </div>
             <div className="flex gap-2">
-              <button className="px-3 py-1 bg-white border border-slate-200 text-[10px] font-bold rounded-lg hover:bg-slate-50">Revoke</button>
+              {member.role === 'M6_VIP_JURY' ? (
+                <button 
+                  onClick={() => handleRoleChange(member.id, 'M6_JURY_ALUMNI')}
+                  className="px-3 py-1 bg-white border border-slate-200 text-[10px] font-bold rounded-lg hover:bg-slate-50">Offboard</button>
+              ) : (
+                <button 
+                  onClick={() => handleRoleChange(member.id, 'M6_VIP_JURY')}
+                  className="px-3 py-1 bg-indigo-600 text-white text-[10px] font-bold rounded-lg hover:bg-indigo-700">Re-appoint</button>
+              )}
               <button className="px-3 py-1 bg-indigo-600 text-white text-[10px] font-bold rounded-lg hover:bg-indigo-700">Audit</button>
             </div>
           </div>
@@ -268,9 +290,134 @@ const JuryManagement = () => {
   );
 };
 
+// 5. Chairman's Ranked Dashboard (M6 Phase 4)
+const YuwaRankedDashboard = () => {
+  const [candidates, setCandidates] = useState([
+    { id: 'Y-001', name: 'Rahul Singh', juryScore: 28, presidentMarks: 0, status: 'Pending_Approval', kyc: 'Pending' },
+    { id: 'Y-002', name: 'Anjali Gupta', juryScore: 26, presidentMarks: 0, status: 'Pending_Approval', kyc: 'Verified' },
+    { id: 'Y-003', name: 'Vikram Das', juryScore: 24, presidentMarks: 0, status: 'Pending_Approval', kyc: 'Pending' }
+  ]);
+  const [selectedCandidate, setSelectedCandidate] = useState<any>(null);
+
+  const handlePresidentMarks = (id: string, marks: number) => {
+    setCandidates(candidates.map(c => c.id === id ? { ...c, presidentMarks: marks } : c));
+  };
+
+  const handleFinalApproval = (id: string, rank: string) => {
+    alert(`M6 Final: Candidate ${id} assigned ${rank}. Triggering Automator Congratulatory Email & GamiPress Badge.`);
+    setCandidates(candidates.map(c => c.id === id ? { ...c, status: rank } : c));
+  };
+
+  const sortedCandidates = [...candidates].sort((a, b) => (b.juryScore + b.presidentMarks) - (a.juryScore + a.presidentMarks));
+
+  return (
+    <div className="bg-white rounded-[2rem] border border-slate-100 overflow-hidden shadow-sm">
+      <div className="p-6 border-b border-slate-50 flex items-center justify-between bg-slate-50/50">
+        <h3 className="font-bold text-slate-900 flex items-center gap-2">
+          <Award className="text-amber-500" size={20} />
+          Yuwa Sewa Samman: Ranked Hub (M6)
+        </h3>
+        <div className="flex items-center gap-2 text-[10px] font-bold text-slate-400 uppercase tracking-widest">
+          <TrendingUp size={14} /> Sorted by Final Score
+        </div>
+      </div>
+      <div className="overflow-x-auto">
+        <table className="w-full text-left border-collapse">
+          <thead>
+            <tr className="bg-slate-50/50">
+              <th className="px-6 py-4 text-[10px] font-bold text-slate-400 uppercase tracking-widest">Rank</th>
+              <th className="px-6 py-4 text-[10px] font-bold text-slate-400 uppercase tracking-widest">Candidate</th>
+              <th className="px-6 py-4 text-[10px] font-bold text-slate-400 uppercase tracking-widest">Jury Avg</th>
+              <th className="px-6 py-4 text-[10px] font-bold text-slate-400 uppercase tracking-widest">President's Marks</th>
+              <th className="px-6 py-4 text-[10px] font-bold text-slate-400 uppercase tracking-widest">KYC</th>
+              <th className="px-6 py-4 text-[10px] font-bold text-slate-400 uppercase tracking-widest text-right">Final Decision</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-slate-50">
+            {sortedCandidates.map((candidate, index) => (
+              <tr key={candidate.id} className="hover:bg-slate-50/50 transition-all group">
+                <td className="px-6 py-4">
+                  <span className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-xs ${
+                    index === 0 ? 'bg-amber-100 text-amber-600' : 'bg-slate-100 text-slate-500'
+                  }`}>
+                    #{index + 1}
+                  </span>
+                </td>
+                <td className="px-6 py-4">
+                  <div className="flex flex-col">
+                    <span className="font-bold text-slate-900 text-sm">{candidate.name}</span>
+                    <span className="text-[10px] font-mono text-slate-400">{candidate.id}</span>
+                  </div>
+                </td>
+                <td className="px-6 py-4 font-bold text-indigo-600">{candidate.juryScore}</td>
+                <td className="px-6 py-4">
+                  <input 
+                    type="number" 
+                    max="20"
+                    placeholder="0-20"
+                    className="w-16 px-2 py-1 bg-white border border-slate-200 rounded-lg text-xs font-bold"
+                    value={candidate.presidentMarks}
+                    onChange={(e) => handlePresidentMarks(candidate.id, parseInt(e.target.value) || 0)}
+                  />
+                </td>
+                <td className="px-6 py-4">
+                  <button 
+                    onClick={() => setSelectedCandidate(candidate)}
+                    className={`px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider flex items-center gap-1 ${
+                      candidate.kyc === 'Verified' ? 'bg-emerald-100 text-emerald-600' : 'bg-rose-100 text-rose-600'
+                    }`}
+                  >
+                    {candidate.kyc === 'Verified' ? <CheckCircle2 size={10} /> : <Video size={10} />}
+                    {candidate.kyc}
+                  </button>
+                </td>
+                <td className="px-6 py-4 text-right">
+                  <select 
+                    className="px-3 py-1 bg-slate-900 text-white text-[10px] font-bold rounded-lg outline-none"
+                    onChange={(e) => handleFinalApproval(candidate.id, e.target.value)}
+                    value={candidate.status}
+                    disabled={candidate.kyc !== 'Verified'}
+                  >
+                    <option value="Pending_Approval">Assign Rank</option>
+                    <option value="1st_Prize">1st Prize (Gold)</option>
+                    <option value="2nd_Prize">2nd Prize (Silver)</option>
+                    <option value="3rd_Prize">3rd Prize (Bronze)</option>
+                    <option value="Consolation">Consolation</option>
+                  </select>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+
+      <AnimatePresence>
+        {selectedCandidate && (
+          <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[100] flex items-center justify-center p-6">
+            <motion.div 
+              initial={{ opacity: 0, scale: 0.9 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.9 }}
+              className="max-w-md w-full"
+            >
+              <VideoKYCBlock 
+                applicant={{ name: selectedCandidate.name, idType: 'Aadhar Card' }} 
+                onComplete={(status) => {
+                  setCandidates(candidates.map(c => c.id === selectedCandidate.id ? { ...c, kyc: status } : c));
+                  setSelectedCandidate(null);
+                }} 
+              />
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+    </div>
+  );
+};
+
 // Main M8 Dashboard Component
 export const AdminDashboard = () => {
-  const [activeTab, setActiveTab] = useState<'overview' | 'ngos' | 'finance' | 'security'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'ngos' | 'finance' | 'yuwa' | 'security'>('overview');
   const [isInducted, setIsInducted] = useState(false);
 
   // M8 Security Prerequisite: Digital Oath Induction
@@ -315,22 +462,28 @@ export const AdminDashboard = () => {
           <h1 className="text-3xl font-bold text-slate-900 tracking-tight">Impact Dashboard</h1>
           <p className="text-slate-500 font-medium">Module M8: Data Governance & Admin Control</p>
         </div>
-        <div className="flex items-center gap-3 p-2 bg-white rounded-2xl border border-slate-100 shadow-sm">
+        <div className="flex items-center gap-3 p-2 bg-white rounded-2xl border border-slate-100 shadow-sm overflow-x-auto">
           <button 
             onClick={() => setActiveTab('overview')}
-            className={`px-4 py-2 rounded-xl text-xs font-bold transition-all ${activeTab === 'overview' ? 'bg-ngo-primary text-white' : 'text-slate-500 hover:bg-slate-50'}`}
+            className={`px-4 py-2 rounded-xl text-xs font-bold transition-all whitespace-nowrap ${activeTab === 'overview' ? 'bg-ngo-primary text-white' : 'text-slate-500 hover:bg-slate-50'}`}
           >
             Overview
           </button>
           <button 
             onClick={() => setActiveTab('ngos')}
-            className={`px-4 py-2 rounded-xl text-xs font-bold transition-all ${activeTab === 'ngos' ? 'bg-ngo-primary text-white' : 'text-slate-500 hover:bg-slate-50'}`}
+            className={`px-4 py-2 rounded-xl text-xs font-bold transition-all whitespace-nowrap ${activeTab === 'ngos' ? 'bg-ngo-primary text-white' : 'text-slate-500 hover:bg-slate-50'}`}
           >
             NGO Queue
           </button>
           <button 
+            onClick={() => setActiveTab('yuwa')}
+            className={`px-4 py-2 rounded-xl text-xs font-bold transition-all whitespace-nowrap ${activeTab === 'yuwa' ? 'bg-ngo-primary text-white' : 'text-slate-500 hover:bg-slate-50'}`}
+          >
+            Yuwa Hub
+          </button>
+          <button 
             onClick={() => setActiveTab('finance')}
-            className={`px-4 py-2 rounded-xl text-xs font-bold transition-all ${activeTab === 'finance' ? 'bg-ngo-primary text-white' : 'text-slate-500 hover:bg-slate-50'}`}
+            className={`px-4 py-2 rounded-xl text-xs font-bold transition-all whitespace-nowrap ${activeTab === 'finance' ? 'bg-ngo-primary text-white' : 'text-slate-500 hover:bg-slate-50'}`}
           >
             Financials
           </button>
@@ -377,6 +530,7 @@ export const AdminDashboard = () => {
             </>
           )}
           {activeTab === 'ngos' && <NGOOnboardingQueue />}
+          {activeTab === 'yuwa' && <YuwaRankedDashboard />}
           {activeTab === 'finance' && <FinancialLedger />}
         </div>
 
