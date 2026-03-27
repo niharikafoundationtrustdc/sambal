@@ -61,6 +61,66 @@
         "label": { "type": "string" }
       },
       "required": ["key", "value", "label"]
+    },
+    "VolunteerTask": {
+      "title": "M11 Volunteer Task",
+      "description": "A task assigned to a volunteer or intern.",
+      "type": "object",
+      "properties": {
+        "title": { "type": "string" },
+        "type": { "type": "string", "enum": ["Online", "Offline"] },
+        "requiredSkill": { "type": "string" },
+        "language": { "type": "string" },
+        "targetPincode": { "type": "string" },
+        "deadline": { "type": "string", "format": "date-time" },
+        "assignedTo": { "type": "string", "description": "UID of the volunteer" },
+        "status": { "type": "string", "enum": ["Open", "Assigned", "Completed", "Verified"] },
+        "sroiValue": { "type": "number" }
+      },
+      "required": ["title", "type", "status"]
+    },
+    "WorkLog": {
+      "title": "M11 Proof of Work Log",
+      "description": "Daily activity log submitted by volunteers.",
+      "type": "object",
+      "properties": {
+        "volunteerId": { "type": "string" },
+        "taskId": { "type": "string" },
+        "hours": { "type": "number" },
+        "mood": { "type": "string", "enum": ["Calm", "Fatigued", "Severe Stress"] },
+        "proofUrl": { "type": "string" },
+        "status": { "type": "string", "enum": ["Pending", "Verified", "Rejected"] },
+        "timestamp": { "type": "string", "format": "date-time" }
+      },
+      "required": ["volunteerId", "hours", "mood", "status"]
+    },
+    "CampaignSubmission": {
+      "title": "M12 Campaign Content",
+      "description": "Content submitted for campaigns.",
+      "type": "object",
+      "properties": {
+        "submitterId": { "type": "string" },
+        "title": { "type": "string" },
+        "contentType": { "type": "string" },
+        "language": { "type": "string" },
+        "targetAudience": { "type": "string" },
+        "assetUrl": { "type": "string" },
+        "status": { "type": "string", "enum": ["Quarantine", "Approved", "Published"] }
+      },
+      "required": ["title", "contentType", "status"]
+    },
+    "EventRSVP": {
+      "title": "M12 Event RSVP",
+      "description": "RSVP for physical events.",
+      "type": "object",
+      "properties": {
+        "eventId": { "type": "string" },
+        "name": { "type": "string" },
+        "email": { "type": "string" },
+        "isGovtOrPress": { "type": "boolean" },
+        "attendees": { "type": "number" }
+      },
+      "required": ["name", "email", "isGovtOrPress"]
     }
   },
   "firestore": {
@@ -79,6 +139,22 @@
     "/stats/{statId}": {
       "schema": "ImpactStat",
       "description": "Aggregated impact statistics"
+    },
+    "/tasks/{taskId}": {
+      "schema": "VolunteerTask",
+      "description": "M11 Volunteer tasks"
+    },
+    "/work_logs/{logId}": {
+      "schema": "WorkLog",
+      "description": "M11 Proof of work logs"
+    },
+    "/campaigns/{campaignId}": {
+      "schema": "CampaignSubmission",
+      "description": "M12 Campaign content"
+    },
+    "/rsvps/{rsvpId}": {
+      "schema": "EventRSVP",
+      "description": "M12 Event RSVPs"
     }
   }
 }

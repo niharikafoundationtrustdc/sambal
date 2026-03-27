@@ -401,6 +401,60 @@ db.exec(`
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP
   );
 
+  CREATE TABLE IF NOT EXISTS m11_volunteer_intake (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    userId INTEGER,
+    name TEXT,
+    email TEXT,
+    phone TEXT,
+    pincode TEXT,
+    talents TEXT,
+    status TEXT DEFAULT 'pending',
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+  );
+
+  CREATE TABLE IF NOT EXISTS m11_internship_intake (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    userId INTEGER,
+    name TEXT,
+    university TEXT,
+    course TEXT,
+    skills TEXT,
+    status TEXT DEFAULT 'pending',
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+  );
+
+  CREATE TABLE IF NOT EXISTS m11_work_logs (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    userId INTEGER,
+    taskId INTEGER,
+    hours REAL,
+    mood TEXT,
+    proof_url TEXT,
+    status TEXT DEFAULT 'pending',
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+  );
+
+  CREATE TABLE IF NOT EXISTS m12_campaign_submissions (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    userId INTEGER,
+    title TEXT,
+    content_type TEXT,
+    asset_url TEXT,
+    status TEXT DEFAULT 'quarantine',
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+  );
+
+  CREATE TABLE IF NOT EXISTS m12_event_rsvps (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    eventId INTEGER,
+    name TEXT,
+    email TEXT,
+    isGovtOrPress BOOLEAN,
+    attendees INTEGER,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+  );
+
   CREATE TABLE IF NOT EXISTS m11_task_master (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     title TEXT,
@@ -1109,6 +1163,66 @@ app.post('/api/admin/impact/toggle-visibility', (req, res) => {
   const { table, id, status } = req.body;
   try {
     db.prepare('INSERT INTO admin_audit_log (adminId, action, details) VALUES (?, ?, ?)').run(1, 'VISIBILITY_TOGGLE', `${table} ${id} visibility set to ${status}`);
+    res.json({ status: 'success' });
+  } catch (err: any) {
+    res.status(500).json({ status: 'error', error: err.message });
+  }
+});
+
+app.post('/api/m11/volunteer-intake', (req, res) => {
+  const { userId, name, email, phone, pincode, talents } = req.body;
+  try {
+    const stmt = db.prepare('INSERT INTO m11_volunteer_intake (userId, name, email, phone, pincode, talents) VALUES (?, ?, ?, ?, ?, ?)');
+    stmt.run(userId, name, email, phone, pincode, talents);
+    res.json({ status: 'success' });
+  } catch (err: any) {
+    res.status(500).json({ status: 'error', error: err.message });
+  }
+});
+
+app.post('/api/m11/internship-intake', (req, res) => {
+  const { userId, name, university, course, skills } = req.body;
+  try {
+    const stmt = db.prepare('INSERT INTO m11_internship_intake (userId, name, university, course, skills) VALUES (?, ?, ?, ?, ?)');
+    stmt.run(userId, name, university, course, skills);
+    res.json({ status: 'success' });
+  } catch (err: any) {
+    res.status(500).json({ status: 'error', error: err.message });
+  }
+});
+
+app.post('/api/m11/work-log', (req, res) => {
+  const { userId, taskId, hours, mood, proof_url } = req.body;
+  try {
+    const stmt = db.prepare('INSERT INTO m11_work_logs (userId, taskId, hours, mood, proof_url) VALUES (?, ?, ?, ?, ?)');
+    stmt.run(userId, taskId, hours, mood, proof_url);
+    res.json({ status: 'success' });
+  } catch (err: any) {
+    res.status(500).json({ status: 'error', error: err.message });
+  }
+});
+
+app.get('/api/m11/tasks', (req, res) => {
+  const tasks = db.prepare('SELECT * FROM m11_task_master').all();
+  res.json(tasks);
+});
+
+app.post('/api/m12/campaign-submit', (req, res) => {
+  const { userId, title, content_type, asset_url } = req.body;
+  try {
+    const stmt = db.prepare('INSERT INTO m12_campaign_submissions (userId, title, content_type, asset_url) VALUES (?, ?, ?, ?)');
+    stmt.run(userId, title, content_type, asset_url);
+    res.json({ status: 'success' });
+  } catch (err: any) {
+    res.status(500).json({ status: 'error', error: err.message });
+  }
+});
+
+app.post('/api/m12/event-rsvp', (req, res) => {
+  const { eventId, name, email, isGovtOrPress, attendees } = req.body;
+  try {
+    const stmt = db.prepare('INSERT INTO m12_event_rsvps (eventId, name, email, isGovtOrPress, attendees) VALUES (?, ?, ?, ?, ?)');
+    stmt.run(eventId, name, email, isGovtOrPress ? 1 : 0, attendees);
     res.json({ status: 'success' });
   } catch (err: any) {
     res.status(500).json({ status: 'error', error: err.message });

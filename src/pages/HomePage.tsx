@@ -39,6 +39,8 @@ import {
   ClipboardCheck
 } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
+import { VolunteerIntakeForm, InternshipIntakeForm, WorkLogForm } from '../components/M11Forms';
+import { CampaignSubmissionForm, EventRSVPForm } from '../components/M12Forms';
 
 const Modal = ({ isOpen, onClose, title, children }: any) => (
   <AnimatePresence>
@@ -126,22 +128,27 @@ export default function HomePage() {
   const [emergencyHide, setEmergencyHide] = useState(false);
   const [showErasureModal, setShowErasureModal] = useState(false);
   const [erasureEmail, setErasureEmail] = useState('');
+  const [activeForm, setActiveForm] = useState<string | null>(null);
 
   useEffect(() => {
-    fetch('/api/stats/impact')
-      .then(res => res.json())
-      .then(data => setImpactStats(data))
-      .catch(err => console.error('Error fetching impact stats:', err));
+    const safeFetch = async (url: string, setter: (data: any) => void, errorLabel: string) => {
+      try {
+        const res = await fetch(url);
+        const contentType = res.headers.get('content-type');
+        if (contentType && contentType.includes('application/json')) {
+          const data = await res.json();
+          setter(data);
+        } else {
+          console.warn(`Expected JSON from ${url} but got ${contentType}. This usually happens if the backend server is not running or the route is not found.`);
+        }
+      } catch (err) {
+        console.error(`Error fetching ${errorLabel}:`, err);
+      }
+    };
 
-    fetch('/api/wish-items')
-      .then(res => res.json())
-      .then(data => setWishItems(data))
-      .catch(err => console.error('Error fetching wish items:', err));
-
-    fetch('/api/admin/settings')
-      .then(res => res.json())
-      .then(data => setEmergencyHide(data.emergency_hide === 'true'))
-      .catch(err => console.error('Error fetching settings:', err));
+    safeFetch('/api/stats/impact', setImpactStats, 'impact stats');
+    safeFetch('/api/wish-items', setWishItems, 'wish items');
+    safeFetch('/api/admin/settings', (data) => setEmergencyHide(data.emergency_hide === 'true'), 'settings');
   }, []);
 
   const handleFulfill = async (itemId: number) => {
@@ -440,10 +447,12 @@ export default function HomePage() {
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {[
-            { id: '1', title: 'Master Beneficiary & Student', icon: GraduationCap, desc: 'Primary registration for all SAMBAL support services.' },
-            { id: '2', title: 'Volunteer Induction', icon: Users, desc: 'Join our national network of verified volunteers.' },
-            { id: '6', title: 'Expert Proctoring Application', icon: ShieldCheck, desc: 'For professionals wishing to join the M9 Expert Panel.' },
-            { id: '21', title: 'Institutional Partnership', icon: Building2, desc: 'NGOs and Schools seeking nodal affiliation.' },
+            { id: '1', title: 'Master Beneficiary & Student', icon: GraduationCap, desc: 'Primary registration for all SAMBAL support services.', type: 'link', to: '/forms/1' },
+            { id: '2', title: 'Volunteer Induction', icon: Users, desc: 'Join our national network of verified Sneh-Rakshaks.', type: 'modal', form: 'volunteer' },
+            { id: '21', title: 'Internship Application', icon: GraduationCap, desc: 'University students and professional talent intake.', type: 'modal', form: 'internship' },
+            { id: 'M12-C', title: 'Campaign Content', icon: Megaphone, desc: 'Submit awareness content for review and publication.', type: 'modal', form: 'campaign' },
+            { id: 'M12-E', title: 'Event RSVP', icon: Calendar, desc: 'Register for upcoming physical events and workshops.', type: 'modal', form: 'rsvp' },
+            { id: 'M11-W', title: 'Daily Work Log', icon: ClipboardCheck, desc: 'Submit daily progress reports for active volunteers.', type: 'modal', form: 'worklog' },
           ].map((form, i) => (
             <motion.div
               key={form.id}
@@ -458,12 +467,22 @@ export default function HomePage() {
               </div>
               <h3 className="text-xl font-bold text-slate-900 mb-2">{form.title}</h3>
               <p className="text-sm text-slate-500 mb-6 leading-relaxed">{form.desc}</p>
-              <Link 
-                to={`/forms/${form.id}`}
-                className="inline-flex items-center gap-2 text-ngo-primary font-bold text-sm uppercase tracking-widest hover:gap-3 transition-all"
-              >
-                Open Form {form.id} <ArrowRight size={18} />
-              </Link>
+              
+              {form.type === 'link' ? (
+                <Link 
+                  to={form.to!}
+                  className="inline-flex items-center gap-2 text-ngo-primary font-bold text-sm uppercase tracking-widest hover:gap-3 transition-all"
+                >
+                  Open Form {form.id} <ArrowRight size={18} />
+                </Link>
+              ) : (
+                <button 
+                  onClick={() => setActiveForm(form.form!)}
+                  className="inline-flex items-center gap-2 text-ngo-primary font-bold text-sm uppercase tracking-widest hover:gap-3 transition-all"
+                >
+                  Open Form {form.id} <ArrowRight size={18} />
+                </button>
+              )}
             </motion.div>
           ))}
         </div>
@@ -1100,6 +1119,47 @@ export default function HomePage() {
       </section>
 
       {/* Erasure Modal */}
+      {/* Registration Modals */}
+      <Modal 
+        isOpen={activeForm === 'volunteer'} 
+        onClose={() => setActiveForm(null)} 
+        title="Sneh-Rakshak Registration"
+      >
+        <VolunteerIntakeForm onSuccess={() => setTimeout(() => setActiveForm(null), 2000)} />
+      </Modal>
+
+      <Modal 
+        isOpen={activeForm === 'internship'} 
+        onClose={() => setActiveForm(null)} 
+        title="Internship Application"
+      >
+        <InternshipIntakeForm onSuccess={() => setTimeout(() => setActiveForm(null), 2000)} />
+      </Modal>
+
+      <Modal 
+        isOpen={activeForm === 'campaign'} 
+        onClose={() => setActiveForm(null)} 
+        title="Submit Campaign Content"
+      >
+        <CampaignSubmissionForm onSuccess={() => setTimeout(() => setActiveForm(null), 2000)} />
+      </Modal>
+
+      <Modal 
+        isOpen={activeForm === 'rsvp'} 
+        onClose={() => setActiveForm(null)} 
+        title="Event RSVP"
+      >
+        <EventRSVPForm eventId={1} onSuccess={() => setTimeout(() => setActiveForm(null), 2000)} />
+      </Modal>
+
+      <Modal 
+        isOpen={activeForm === 'worklog'} 
+        onClose={() => setActiveForm(null)} 
+        title="Daily Work Log"
+      >
+        <WorkLogForm onSuccess={() => setTimeout(() => setActiveForm(null), 2000)} />
+      </Modal>
+
       <Modal 
         isOpen={showErasureModal} 
         onClose={() => setShowErasureModal(false)} 
