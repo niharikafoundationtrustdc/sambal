@@ -80,6 +80,42 @@ export default function ClinicalLibrary() {
     return false;
   };
 
+  const handleDownload = (item: any) => {
+    // M5 Webhook: Log Resource Download
+    fetch('/api/m5/webhook', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        form_id: 'M11_LIBRARY_DOWNLOAD',
+        payload: { resource_id: item.id, title: item.title, format: item.format, action: 'resource_download' },
+        secure_url: '/clinical-library'
+      })
+    }).catch(err => console.error('M5 Library Download Log Failed:', err));
+
+    // Simulated Download
+    const blob = new Blob([`Simulated content for ${item.title}`], { type: 'text/plain' });
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `${item.title.replace(/\s+/g, '_')}_SAMBAL.${item.format.toLowerCase()}`;
+    document.body.appendChild(a);
+    a.click();
+    window.URL.revokeObjectURL(url);
+    document.body.removeChild(a);
+    
+    alert(`M9: Initiating download for ${item.title}. This action is logged in the M5 Master Ledger.`);
+  };
+
+  const clearFilters = () => {
+    setFilters({
+      dialect: '',
+      condition: '',
+      format: ''
+    });
+    setSearchQuery('');
+    setSelectedZone(null);
+  };
+
   return (
     <div className="min-h-screen bg-slate-50 py-20 px-6">
       <div className="max-w-7xl mx-auto">
@@ -137,11 +173,19 @@ export default function ClinicalLibrary() {
           {/* Faceted Filters */}
           <div className="lg:col-span-1 space-y-6">
             <div className="bg-white p-8 rounded-[2.5rem] border border-slate-100 shadow-sm">
-              <h3 className="text-lg font-serif font-bold mb-6 flex items-center gap-2">
-                <Filter size={20} className="text-ngo-primary" /> Faceted Search
-              </h3>
-
               <div className="space-y-6">
+                <div className="flex items-center justify-between mb-2">
+                  <h3 className="text-lg font-serif font-bold flex items-center gap-2">
+                    <Filter size={20} className="text-ngo-primary" /> Faceted Search
+                  </h3>
+                  <button 
+                    onClick={clearFilters}
+                    className="text-[10px] font-bold text-slate-400 hover:text-ngo-primary uppercase tracking-widest"
+                  >
+                    Clear All
+                  </button>
+                </div>
+
                 <div>
                   <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-3">Dialect</label>
                   <select 
@@ -252,7 +296,18 @@ export default function ClinicalLibrary() {
                     </div>
 
                     <div className="flex items-center justify-between">
-                      <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{item.format}</span>
+                      <div className="flex items-center gap-2">
+                        <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{item.format}</span>
+                        {item.format === 'PDF' && (
+                          <button 
+                            onClick={() => handleDownload(item)}
+                            className="p-1 text-slate-400 hover:text-ngo-primary transition-colors"
+                            title="Download PDF"
+                          >
+                            <Download size={14} />
+                          </button>
+                        )}
+                      </div>
                       <button 
                         onClick={() => {
                           // M5 Webhook: Log Resource Access

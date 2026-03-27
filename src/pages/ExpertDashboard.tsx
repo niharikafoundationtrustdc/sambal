@@ -79,6 +79,18 @@ export default function ExpertDashboard() {
           finalText: correctedText
         })
       });
+
+      // M5 Webhook: Log Bounty Completion
+      fetch('/api/m5/webhook', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          form_id: 'M6_BOUNTY_COMPLETION',
+          payload: { bountyId: activeBounty.id, userId: '1', points: 50 },
+          secure_url: '/expert/dashboard'
+        })
+      }).catch(err => console.error('M5 Bounty Log Failed:', err));
+
       setActiveBounty(null);
       fetchBounties();
       fetchUser();
@@ -235,7 +247,9 @@ export default function ExpertDashboard() {
               <p className="text-white/60 text-xs mb-8 leading-relaxed">
                 Download your quarterly pro-bono impact dossier for statutory CRE requirements.
               </p>
-              <button className="w-full py-4 bg-blue-600 text-white rounded-2xl font-bold text-sm hover:bg-blue-500 transition-all flex items-center justify-center gap-2">
+              <button 
+                onClick={() => alert("M3 Compliance: Generating RCI-aligned pro-bono impact dossier (PDF). Verifiable via M5 Ledger.")}
+                className="w-full py-4 bg-blue-600 text-white rounded-2xl font-bold text-sm hover:bg-blue-500 transition-all flex items-center justify-center gap-2">
                 <Download size={18} /> Download Verifiable PDF
               </button>
             </div>
@@ -412,6 +426,24 @@ export default function ExpertDashboard() {
                     Cancel
                   </button>
                   <button 
+                    onClick={async () => {
+                      // M5 Webhook: Log E-Prescription Issuance
+                      try {
+                        await fetch('/api/m5/webhook', {
+                          method: 'POST',
+                          headers: { 'Content-Type': 'application/json' },
+                          body: JSON.stringify({
+                            form_id: 'M3_E_PRESCRIPTION_ISSUE',
+                            payload: { sessionId: selectedSession.id, patientName: selectedSession.other_party_name, expertId: '1' },
+                            secure_url: '/expert/dashboard'
+                          })
+                        });
+                        setShowPrescriptionForm(false);
+                        alert("E-Prescription issued and logged in M5 Ledger.");
+                      } catch (err) {
+                        console.error('M5 Prescription Log Failed:', err);
+                      }
+                    }}
                     className="flex-[2] py-4 bg-ngo-primary text-white rounded-2xl font-bold shadow-lg shadow-ngo-primary/20 hover:scale-[1.02] transition-all flex items-center justify-center gap-2"
                   >
                     <ShieldAlert size={20} /> Secure Issue & Log in M5

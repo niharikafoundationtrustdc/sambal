@@ -38,11 +38,25 @@ export const FacilityBookingForm: React.FC<FormProps> = ({ userId, onSuccess }) 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
-    setTimeout(() => {
-      setSubmitted(true);
+    try {
+      const res = await fetch('/api/m5/webhook', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          form_id: 'facility_booking',
+          payload: { ...formData, userId },
+          secure_url: '/campus'
+        })
+      });
+      if (res.ok) {
+        setSubmitted(true);
+        onSuccess?.();
+      }
+    } catch (err) {
+      console.error('Error submitting facility booking:', err);
+    } finally {
       setLoading(false);
-      onSuccess?.();
-    }, 1500);
+    }
   };
 
   if (submitted) {
@@ -196,11 +210,25 @@ export const AttendanceForm: React.FC<FormProps> = ({ userId, onSuccess }) => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
-    setTimeout(() => {
-      setSubmitted(true);
+    try {
+      const res = await fetch('/api/m5/webhook', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          form_id: 'attendance_log',
+          payload: { ...formData, userId },
+          secure_url: '/campus'
+        })
+      });
+      if (res.ok) {
+        setSubmitted(true);
+        onSuccess?.();
+      }
+    } catch (err) {
+      console.error('Error submitting attendance:', err);
+    } finally {
       setLoading(false);
-      onSuccess?.();
-    }, 1000);
+    }
   };
 
   if (submitted) {
@@ -258,14 +286,32 @@ export const AttendanceForm: React.FC<FormProps> = ({ userId, onSuccess }) => {
 export const VisitorSecurityLog: React.FC<FormProps> = () => {
   const [loading, setLoading] = useState(false);
   const [submitted, setSubmitted] = useState(false);
+  const [formData, setFormData] = useState({
+    uin: '',
+    purpose: ''
+  });
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
-    setTimeout(() => {
-      setSubmitted(true);
+    try {
+      const res = await fetch('/api/m5/webhook', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          form_id: 'visitor_log',
+          payload: { ...formData, timestamp: new Date().toISOString() },
+          secure_url: '/campus'
+        })
+      });
+      if (res.ok) {
+        setSubmitted(true);
+      }
+    } catch (err) {
+      console.error('Error submitting visitor log:', err);
+    } finally {
       setLoading(false);
-    }, 1000);
+    }
   };
 
   return (
@@ -278,11 +324,22 @@ export const VisitorSecurityLog: React.FC<FormProps> = () => {
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         <div className="space-y-2">
           <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Visitor UIN</label>
-          <input required className="w-full px-4 py-3 rounded-xl border border-slate-200" placeholder="e.g. UIN-12345" />
+          <input 
+            required 
+            className="w-full px-4 py-3 rounded-xl border border-slate-200" 
+            placeholder="e.g. UIN-12345"
+            value={formData.uin}
+            onChange={e => setFormData({ ...formData, uin: e.target.value })}
+          />
         </div>
         <div className="space-y-2">
           <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Purpose of Visit</label>
-          <input required className="w-full px-4 py-3 rounded-xl border border-slate-200" />
+          <input 
+            required 
+            className="w-full px-4 py-3 rounded-xl border border-slate-200"
+            value={formData.purpose}
+            onChange={e => setFormData({ ...formData, purpose: e.target.value })}
+          />
         </div>
       </div>
 
@@ -301,14 +358,32 @@ export const VisitorSecurityLog: React.FC<FormProps> = () => {
 export const AssetMaintenanceLog: React.FC<FormProps> = () => {
   const [loading, setLoading] = useState(false);
   const [submitted, setSubmitted] = useState(false);
+  const [formData, setFormData] = useState({
+    asset: 'Bio-Well Device',
+    details: ''
+  });
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
-    setTimeout(() => {
-      setSubmitted(true);
+    try {
+      const res = await fetch('/api/m5/webhook', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          form_id: 'asset_maintenance',
+          payload: { ...formData, timestamp: new Date().toISOString() },
+          secure_url: '/campus'
+        })
+      });
+      if (res.ok) {
+        setSubmitted(true);
+      }
+    } catch (err) {
+      console.error('Error submitting asset maintenance:', err);
+    } finally {
       setLoading(false);
-    }, 1000);
+    }
   };
 
   return (
@@ -317,7 +392,11 @@ export const AssetMaintenanceLog: React.FC<FormProps> = () => {
         <label className="text-xs font-bold text-slate-500 uppercase tracking-wider flex items-center gap-2">
           <Wrench size={14} /> Asset to Service
         </label>
-        <select className="w-full px-4 py-3 rounded-xl border border-slate-200">
+        <select 
+          className="w-full px-4 py-3 rounded-xl border border-slate-200"
+          value={formData.asset}
+          onChange={e => setFormData({ ...formData, asset: e.target.value })}
+        >
           <option>Bio-Well Device</option>
           <option>Recording Studio Mics/Cameras</option>
           <option>Campus Laptops</option>
@@ -328,7 +407,13 @@ export const AssetMaintenanceLog: React.FC<FormProps> = () => {
 
       <div className="space-y-2">
         <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Service Details</label>
-        <textarea required rows={3} className="w-full px-4 py-3 rounded-xl border border-slate-200" />
+        <textarea 
+          required 
+          rows={3} 
+          className="w-full px-4 py-3 rounded-xl border border-slate-200"
+          value={formData.details}
+          onChange={e => setFormData({ ...formData, details: e.target.value })}
+        />
       </div>
 
       <button

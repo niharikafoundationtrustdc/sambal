@@ -67,8 +67,8 @@ export default function CampusBookingPage() {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            form_id: 'M8_CAMPUS_BOOKING',
-            payload: { ...formData, resourceId: selectedResource.id, userId: 1 },
+            formId: 'M8_CAMPUS_BOOKING',
+            data: { ...formData, resourceId: selectedResource.id, userId: 1 },
             secure_url: '/campus/book'
           })
         }).catch(err => console.error('M5 Booking Log Failed:', err));

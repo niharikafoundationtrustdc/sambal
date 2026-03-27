@@ -40,12 +40,25 @@ export const ExpertOnboardingForm: React.FC<FormProps> = ({ userId, onSuccess })
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
-    // Mock submission
-    setTimeout(() => {
-      setSubmitted(true);
+    try {
+      const res = await fetch('/api/m5/webhook', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          form_id: 'expert_onboarding',
+          payload: { ...formData, userId },
+          secure_url: '/telebridge'
+        })
+      });
+      if (res.ok) {
+        setSubmitted(true);
+        onSuccess?.();
+      }
+    } catch (err) {
+      console.error('Error submitting expert onboarding:', err);
+    } finally {
       setLoading(false);
-      onSuccess?.();
-    }, 1500);
+    }
   };
 
   if (submitted) {
@@ -185,12 +198,25 @@ export const PatientIntakeForm: React.FC<FormProps> = ({ userId, onSuccess }) =>
     setScore(finalScore);
     setLoading(true);
     
-    // Mock logic
-    setTimeout(() => {
+    try {
+      const res = await fetch('/api/m5/webhook', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          form_id: 'patient_intake',
+          payload: { ...formData, score: finalScore, userId },
+          secure_url: '/telebridge'
+        })
+      });
+      if (res.ok) {
+        setStep(3);
+        onSuccess?.();
+      }
+    } catch (err) {
+      console.error('Error submitting patient intake:', err);
+    } finally {
       setLoading(false);
-      setStep(3);
-      onSuccess?.();
-    }, 1500);
+    }
   };
 
   return (
@@ -319,14 +345,32 @@ export const PatientIntakeForm: React.FC<FormProps> = ({ userId, onSuccess }) =>
 export const EPrescriptionForm: React.FC<FormProps> = ({ userId }) => {
   const [loading, setLoading] = useState(false);
   const [generated, setGenerated] = useState(false);
+  const [formData, setFormData] = useState({
+    diagnosis: '',
+    medication: ''
+  });
 
   const handleGenerate = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
-    setTimeout(() => {
-      setGenerated(true);
+    try {
+      const res = await fetch('/api/m5/webhook', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          form_id: 'e_prescription',
+          payload: { ...formData, userId, timestamp: new Date().toISOString() },
+          secure_url: '/telebridge'
+        })
+      });
+      if (res.ok) {
+        setGenerated(true);
+      }
+    } catch (err) {
+      console.error('Error generating prescription:', err);
+    } finally {
       setLoading(false);
-    }, 2000);
+    }
   };
 
   return (
@@ -339,11 +383,22 @@ export const EPrescriptionForm: React.FC<FormProps> = ({ userId }) => {
       <div className="space-y-4">
         <div className="space-y-2">
           <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Diagnosis</label>
-          <input required className="w-full px-4 py-3 rounded-xl border border-slate-200" />
+          <input 
+            required 
+            className="w-full px-4 py-3 rounded-xl border border-slate-200"
+            value={formData.diagnosis}
+            onChange={e => setFormData({ ...formData, diagnosis: e.target.value })}
+          />
         </div>
         <div className="space-y-2">
           <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Medication & Dosage</label>
-          <textarea required rows={4} className="w-full px-4 py-3 rounded-xl border border-slate-200" />
+          <textarea 
+            required 
+            rows={4} 
+            className="w-full px-4 py-3 rounded-xl border border-slate-200"
+            value={formData.medication}
+            onChange={e => setFormData({ ...formData, medication: e.target.value })}
+          />
         </div>
       </div>
 

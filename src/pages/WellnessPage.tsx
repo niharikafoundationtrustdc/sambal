@@ -32,7 +32,13 @@ const ExpertCard = ({ name, role, rating, fee, image }: any) => (
         <div className="text-[10px] uppercase tracking-widest text-slate-400 font-bold">Consultation</div>
         <div className="text-lg font-bold text-slate-800">₹{fee}</div>
       </div>
-      <button className="bg-ngo-primary text-white px-6 py-2 rounded-xl text-sm font-bold hover:bg-ngo-primary/90 transition-all">
+      <button 
+        onClick={() => {
+          const element = document.getElementById('booking-form');
+          element?.scrollIntoView({ behavior: 'smooth' });
+        }}
+        className="bg-ngo-primary text-white px-6 py-2 rounded-xl text-sm font-bold hover:bg-ngo-primary/90 transition-all"
+      >
         Book Now
       </button>
     </div>
@@ -114,7 +120,7 @@ export default function WellnessPage() {
             </div>
           </section>
 
-          <section>
+          <section id="booking-form">
             <h2 className="text-3xl font-serif font-bold mb-8 flex items-center gap-3">
               <MapPin className="text-blue-500" /> Lucknow Campus Hub
             </h2>

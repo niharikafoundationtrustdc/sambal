@@ -39,35 +39,30 @@ const FileUpload: React.FC<FileUploadProps> = ({
     setUploading(true);
     setProgress(0);
     
-    // Simulate upload progress
-    const interval = setInterval(() => {
-      setProgress(prev => {
-        if (prev >= 98) {
-          clearInterval(interval);
-          return 98;
-        }
-        // Faster progress for small files
-        const increment = file.size < 1024 * 1024 ? 10 : 5;
-        return prev + increment;
-      });
-    }, 50);
+    const formData = new FormData();
+    formData.append('file', file);
 
     try {
-      // Reduced simulated delay for better UX (800ms instead of 2000ms)
-      const uploadDelay = file.size < 1024 * 1024 ? 500 : 800;
-      await new Promise(resolve => setTimeout(resolve, uploadDelay));
+      const res = await fetch('/api/upload', {
+        method: 'POST',
+        body: formData,
+      });
+
+      if (!res.ok) throw new Error('Upload failed');
       
-      clearInterval(interval);
-      setProgress(100);
-      setUploading(false);
+      const data = await res.json();
       
-      const mockUrl = `https://storage.sambal.org/uploads/${Date.now()}-${file.name}`;
-      setUploadedUrl(mockUrl);
-      onUpload(mockUrl);
+      if (data.url) {
+        setProgress(100);
+        setUploading(false);
+        setUploadedUrl(data.url);
+        onUpload(data.url);
+      } else {
+        throw new Error('No URL returned');
+      }
     } catch (err) {
       setError("Upload failed. Please try again.");
       setUploading(false);
-      clearInterval(interval);
     }
   };
 

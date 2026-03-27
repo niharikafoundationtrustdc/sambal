@@ -19,6 +19,7 @@ import {
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { getUTMParams } from '../lib/utm';
+import FileUpload from '../components/FileUpload';
 
 const Modal = ({ isOpen, onClose, title, children }: any) => (
   <AnimatePresence>
@@ -45,61 +46,6 @@ const Modal = ({ isOpen, onClose, title, children }: any) => (
   </AnimatePresence>
 );
 
-const FileUpload = ({ onUploadSuccess, label }: { onUploadSuccess: (url: string) => void, label: string }) => {
-  const [uploading, setUploading] = useState(false);
-  const [fileName, setFileName] = useState<string | null>(null);
-
-  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    setUploading(true);
-    setFileName(file.name);
-
-    const formData = new FormData();
-    formData.append('file', file);
-
-    try {
-      const res = await fetch('/api/upload', {
-        method: 'POST',
-        body: formData,
-      });
-      const data = await res.json();
-      if (data.url) {
-        onUploadSuccess(data.url);
-      }
-    } catch (err) {
-      console.error('Upload failed:', err);
-      alert('Upload failed. Please try again.');
-    } finally {
-      setUploading(false);
-    }
-  };
-
-  return (
-    <div className="space-y-2">
-      <label className="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">{label}</label>
-      <div className="relative group">
-        <input 
-          type="file" 
-          onChange={handleFileChange}
-          className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
-          disabled={uploading}
-        />
-        <div className={`w-full px-6 py-8 rounded-2xl border-2 border-dashed transition-all flex flex-col items-center justify-center gap-3 ${uploading ? 'bg-slate-50 border-slate-200' : 'bg-slate-50 border-slate-200 group-hover:border-ngo-primary group-hover:bg-white'}`}>
-          <div className={`p-3 rounded-xl ${uploading ? 'bg-slate-100 text-slate-400' : 'bg-white text-ngo-primary shadow-sm'}`}>
-            {uploading ? <div className="w-6 h-6 border-2 border-ngo-primary border-t-transparent rounded-full animate-spin"></div> : <Upload size={24} />}
-          </div>
-          <div className="text-center">
-            <p className="text-sm font-bold text-slate-600">{fileName || 'Click or drag to upload'}</p>
-            <p className="text-[10px] text-slate-400 uppercase tracking-widest font-bold mt-1">PDF, JPG, PNG (Max 10MB)</p>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-};
-
 const OpportunityCard = ({ title, type, location, points, delay }: any) => (
   <motion.div 
     initial={{ opacity: 0, y: 20 }}
@@ -121,7 +67,10 @@ const OpportunityCard = ({ title, type, location, points, delay }: any) => (
       <span className="w-1 h-1 rounded-full bg-slate-200" />
       <span>{location}</span>
     </div>
-    <button className="w-full py-4 rounded-2xl bg-slate-50 text-slate-600 font-bold hover:bg-ngo-primary hover:text-white transition-all flex items-center justify-center gap-2">
+    <button 
+      onClick={() => alert(`Application for ${title} submitted! Status: Pending_Induction_Review.`)}
+      className="w-full py-4 rounded-2xl bg-slate-50 text-slate-600 font-bold hover:bg-ngo-primary hover:text-white transition-all flex items-center justify-center gap-2"
+    >
       Apply Now <ArrowRight size={16} />
     </button>
   </motion.div>
@@ -410,9 +359,19 @@ export default function ServicePage() {
               required
             />
           </div>
-          <button type="submit" className="w-full py-4 bg-rose-600 text-white rounded-2xl font-bold hover:bg-rose-700 transition-all shadow-lg shadow-rose-100">
-            Submit Grievance
-          </button>
+          <div className="flex gap-4">
+            <button 
+              type="button" 
+              onClick={() => window.open('https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf', '_blank')}
+              className="flex-1 py-4 bg-slate-100 text-slate-600 rounded-2xl font-bold hover:bg-slate-200 transition-all flex items-center justify-center gap-2"
+            >
+              <FileText size={18} />
+              Download Form
+            </button>
+            <button type="submit" className="flex-[2] py-4 bg-rose-600 text-white rounded-2xl font-bold hover:bg-rose-700 transition-all shadow-lg shadow-rose-100">
+              Submit Grievance
+            </button>
+          </div>
         </form>
       </Modal>
 
@@ -435,7 +394,7 @@ export default function ServicePage() {
           </div>
           <FileUpload 
             label="Degree/Certification Upload (Form 6)"
-            onUploadSuccess={(url) => setExpertData({...expertData, degreeUrl: url})}
+            onUpload={(url) => setExpertData({...expertData, degreeUrl: url})}
           />
           <div className="grid md:grid-cols-2 gap-6">
             <div>
@@ -497,7 +456,7 @@ export default function ServicePage() {
           </div>
           <FileUpload 
             label="Activity Proof (Photo/Document)"
-            onUploadSuccess={(url) => setDailyTrackerData({...dailyTrackerData, photoUrl: url})}
+            onUpload={(url) => setDailyTrackerData({...dailyTrackerData, photoUrl: url})}
           />
           <div className="grid grid-cols-2 gap-6">
             <div>
@@ -570,7 +529,7 @@ export default function ServicePage() {
           </div>
           <FileUpload 
             label="Upload Campaign Asset"
-            onUploadSuccess={(url) => setCampaignData({...campaignData, assetUrl: url})}
+            onUpload={(url) => setCampaignData({...campaignData, assetUrl: url})}
           />
           <button type="submit" className="w-full py-4 bg-emerald-600 text-white rounded-2xl font-bold hover:bg-emerald-700 transition-all shadow-lg shadow-emerald-100">
             Save Asset

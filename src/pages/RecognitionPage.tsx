@@ -1,6 +1,7 @@
 import React from 'react';
 import { motion } from 'motion/react';
-import { Award, ShieldCheck, Star, CheckCircle2, Trophy, Medal } from 'lucide-react';
+import { Award, ShieldCheck, Star, CheckCircle2, Trophy, Medal, Users } from 'lucide-react';
+import YuwaNominationForm from '../components/YuwaNominationForm';
 
 const RecognitionPage = () => {
   return (
@@ -79,6 +80,19 @@ const RecognitionPage = () => {
                 <p className="text-xs text-slate-500 leading-relaxed">{c.desc}</p>
               </div>
             ))}
+          </div>
+        </section>
+
+        {/* Yuwa Sewa Samman Nomination */}
+        <section className="mt-24">
+          <div className="text-center mb-16">
+            <h2 className="text-4xl font-serif font-bold text-slate-900 mb-4">Yuwa Sewa Samman</h2>
+            <p className="text-slate-600 max-w-2xl mx-auto">
+              Nominate young leaders (18-35) who are making a significant impact in their communities.
+            </p>
+          </div>
+          <div className="max-w-4xl mx-auto">
+            <YuwaNominationForm />
           </div>
         </section>
 

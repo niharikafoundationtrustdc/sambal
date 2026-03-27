@@ -9,6 +9,7 @@ import {
   Filter, 
   MoreVertical, 
   CheckCircle2, 
+  X,
   XCircle, 
   Eye,
   Lock,
@@ -34,14 +35,39 @@ import { UserRole, M5Status } from '../types';
 
 // 1. NGO Onboarding Queue (M8 Phase 2)
 const NGOOnboardingQueue = () => {
+  const [searchTerm, setSearchTerm] = useState('');
   const [ngos, setNgos] = useState([
     { id: 'NGO-001', name: 'Rural Health Initiative', type: 'Health', status: 'Pending_Verification', docUrl: '#' },
     { id: 'NGO-002', name: 'Skill Up India', type: 'Education', status: 'Pending_Verification', docUrl: '#' },
     { id: 'NGO-003', name: 'Green Earth Foundation', type: 'Environment', status: 'Verified_NGO', docUrl: '#' }
   ]);
 
-  const handleVerify = (id: string) => {
+  const [filterStatus, setFilterStatus] = useState<string | null>(null);
+
+  const filteredNgos = ngos.filter(ngo => 
+    (ngo.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
+     ngo.id.toLowerCase().includes(searchTerm.toLowerCase())) &&
+    (!filterStatus || ngo.status === filterStatus)
+  );
+
+  const handleVerify = async (id: string) => {
     alert(`M8 Admin: Finalizing verification for ${id}. Role updated to 'Verified_NGO'. Expiry set to 365 days.`);
+    
+    // M5 Webhook: Log NGO Verification
+    try {
+      await fetch('/api/m5/webhook', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          form_id: 'M4_NGO_VERIFICATION',
+          payload: { ngoId: id, status: 'Verified_NGO', verifiedBy: 'ADMIN-001' },
+          secure_url: '/admin/dashboard'
+        })
+      });
+    } catch (err) {
+      console.error('M5 NGO Verification Log Failed:', err);
+    }
+
     setNgos(ngos.map(n => n.id === id ? { ...n, status: 'Verified_NGO' } : n));
   };
 
@@ -55,10 +81,20 @@ const NGOOnboardingQueue = () => {
         <div className="flex gap-2">
           <div className="relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={14} />
-            <input type="text" placeholder="Search NGOs..." className="pl-9 pr-4 py-2 bg-white border border-slate-200 rounded-xl text-xs focus:ring-2 focus:ring-ngo-primary outline-none" />
+            <input 
+              type="text" 
+              placeholder="Search NGOs..." 
+              className="pl-9 pr-4 py-2 bg-white border border-slate-200 rounded-xl text-xs focus:ring-2 focus:ring-ngo-primary outline-none"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+            />
           </div>
-          <button className="p-2 bg-white border border-slate-200 rounded-xl hover:bg-slate-50 transition-all">
-            <Filter size={14} className="text-slate-500" />
+          <button 
+            onClick={() => setFilterStatus(filterStatus === 'Pending_Verification' ? null : 'Pending_Verification')}
+            className={`p-2 border rounded-xl transition-all ${filterStatus ? 'bg-ngo-primary border-ngo-primary text-white' : 'bg-white border-slate-200 text-slate-500 hover:bg-slate-50'}`}
+            title={filterStatus ? "Clear Filter" : "Show Pending Only"}
+          >
+            <Filter size={14} />
           </button>
         </div>
       </div>
@@ -74,7 +110,7 @@ const NGOOnboardingQueue = () => {
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-50">
-            {ngos.map((ngo) => (
+            {filteredNgos.map((ngo) => (
               <tr key={ngo.id} className="hover:bg-slate-50/50 transition-all group">
                 <td className="px-6 py-4 font-mono text-xs text-slate-500">{ngo.id}</td>
                 <td className="px-6 py-4 font-bold text-slate-900 text-sm">{ngo.name}</td>
@@ -92,7 +128,9 @@ const NGOOnboardingQueue = () => {
                 </td>
                 <td className="px-6 py-4 text-right">
                   <div className="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-all">
-                    <button className="p-2 text-slate-400 hover:text-ngo-primary hover:bg-ngo-primary/5 rounded-lg transition-all" title="View Documents">
+                    <button 
+                      onClick={() => alert(`M8 Admin: Opening document vault for ${ngo.id}. Verifying 80G/12A compliance documents.`)}
+                      className="p-2 text-slate-400 hover:text-ngo-primary hover:bg-ngo-primary/5 rounded-lg transition-all" title="View Documents">
                       <Eye size={16} />
                     </button>
                     {ngo.status === 'Pending_Verification' && (
@@ -121,13 +159,29 @@ const FinancialLedger = () => {
     { id: 'TXN-9903', donor: 'Corporate CSR', amount: 50000, status: 'Cleared', verified: true, approved: true }
   ]);
 
-  const handleApproval = (id: string, type: 'verify' | 'approve') => {
+  const handleApproval = async (id: string, type: 'verify' | 'approve') => {
     const txn = transactions.find(t => t.id === id);
     if (type === 'approve' && !txn?.verified) {
       alert("M8 Security: Cannot approve before HQ Finance verification (Four-Eyes Principle).");
       return;
     }
     alert(`M8 Security: ${type === 'verify' ? 'HQ Finance' : 'Super Admin'} ${type}d transaction ${id}.`);
+    
+    // M5 Webhook: Log Transaction Approval
+    try {
+      await fetch('/api/m5/webhook', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          form_id: 'M7_FINANCIAL_APPROVAL',
+          payload: { txnId: id, action: type, adminId: 'ADMIN-001' },
+          secure_url: '/admin/dashboard'
+        })
+      });
+    } catch (err) {
+      console.error('M5 Financial Approval Log Failed:', err);
+    }
+
     setTransactions(transactions.map(t => {
       if (t.id === id) {
         return type === 'verify' ? { ...t, verified: true } : { ...t, approved: true };
@@ -143,7 +197,9 @@ const FinancialLedger = () => {
           <IndianRupee className="text-emerald-600" size={20} />
           M7 Financial Ledger (Four-Eyes Logic)
         </h3>
-        <button className="text-xs font-bold text-ngo-primary hover:underline flex items-center gap-1">
+        <button 
+          onClick={() => window.open('https://docs.google.com/spreadsheets/d/M5_MASTER_LEDGER_ID', '_blank')}
+          className="text-xs font-bold text-ngo-primary hover:underline flex items-center gap-1">
           Open M5 Master Sheet <ExternalLink size={12} />
         </button>
       </div>
@@ -214,13 +270,29 @@ const MasterControls = () => {
     lmsPublic: true
   });
 
-  const toggleSwitch = (key: keyof typeof switches) => {
+  const toggleSwitch = async (key: keyof typeof switches) => {
     const newVal = !switches[key];
     if (newVal === true && key === 'emergencyHide') {
       if (!confirm("CRITICAL: This will immediately hide all sensitive public data. Proceed?")) return;
     }
+    
     setSwitches({ ...switches, [key]: newVal });
     alert(`M8 Master Control: ${key} set to ${newVal}. Updating M5 Ledger...`);
+
+    // M5 Webhook: Log System Control Change
+    try {
+      await fetch('/api/m5/webhook', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          form_id: 'M8_SYSTEM_CONTROL',
+          payload: { control: key, value: newVal, adminId: 'ADMIN-001' },
+          secure_url: '/admin/dashboard'
+        })
+      });
+    } catch (err) {
+      console.error('M5 System Control Log Failed:', err);
+    }
   };
 
   return (
@@ -250,8 +322,24 @@ const JuryManagement = () => {
     { id: 'J-02', name: 'Smt. Sunita Devi', role: 'M6_JURY_ALUMNI', sessions: 8 }
   ]);
 
-  const handleRoleChange = (id: string, newRole: string) => {
+  const handleRoleChange = async (id: string, newRole: string) => {
     alert(`M6 Automator: Role changed to ${newRole}. Triggering "Letter of Gratitude" recipe.`);
+    
+    // M5 Webhook: Log Jury Role Change
+    try {
+      await fetch('/api/m5/webhook', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          form_id: 'M6_JURY_ROLE_CHANGE',
+          payload: { juryId: id, newRole, adminId: 'ADMIN-001' },
+          secure_url: '/admin/dashboard'
+        })
+      });
+    } catch (err) {
+      console.error('M5 Jury Role Change Log Failed:', err);
+    }
+
     setJury(jury.map(j => j.id === id ? { ...j, role: newRole as any } : j));
   };
 
@@ -262,7 +350,9 @@ const JuryManagement = () => {
           <ShieldCheck className="text-indigo-600" size={20} />
           Jury Governance (M6)
         </h3>
-        <button className="p-2 bg-indigo-50 text-indigo-600 rounded-xl hover:bg-indigo-100 transition-all">
+        <button 
+          onClick={() => alert("M6 Governance: Opening 'Add New Jury Member' interface. Role: M6_VIP_JURY by default.")}
+          className="p-2 bg-indigo-50 text-indigo-600 rounded-xl hover:bg-indigo-100 transition-all">
           <UserPlus size={18} />
         </button>
       </div>
@@ -288,7 +378,9 @@ const JuryManagement = () => {
                   onClick={() => handleRoleChange(member.id, 'M6_VIP_JURY')}
                   className="px-3 py-1 bg-indigo-600 text-white text-[10px] font-bold rounded-lg hover:bg-indigo-700">Re-appoint</button>
               )}
-              <button className="px-3 py-1 bg-indigo-600 text-white text-[10px] font-bold rounded-lg hover:bg-indigo-700">Audit</button>
+              <button 
+                onClick={() => alert(`M6 Governance: Accessing full audit trail for Jury ${member.id} (${member.name}).`)}
+                className="px-3 py-1 bg-indigo-600 text-white text-[10px] font-bold rounded-lg hover:bg-indigo-700">Audit</button>
             </div>
           </div>
         ))}
@@ -310,8 +402,24 @@ const YuwaRankedDashboard = () => {
     setCandidates(candidates.map(c => c.id === id ? { ...c, presidentMarks: marks } : c));
   };
 
-  const handleFinalApproval = (id: string, rank: string) => {
+  const handleFinalApproval = async (id: string, rank: string) => {
     alert(`M6 Final: Candidate ${id} assigned ${rank}. Triggering Automator Congratulatory Email & GamiPress Badge.`);
+    
+    // M5 Webhook: Log Yuwa Final Approval
+    try {
+      await fetch('/api/m5/webhook', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          form_id: 'M6_YUWA_FINAL_APPROVAL',
+          payload: { candidateId: id, rank, adminId: 'ADMIN-001' },
+          secure_url: '/admin/dashboard'
+        })
+      });
+    } catch (err) {
+      console.error('M5 Yuwa Final Approval Log Failed:', err);
+    }
+
     setCandidates(candidates.map(c => c.id === id ? { ...c, status: rank } : c));
   };
 
@@ -422,7 +530,101 @@ const YuwaRankedDashboard = () => {
   );
 };
 
-// 6. Looker Studio Dashboard Embeds (M5 Phase 6)
+// 7. Campus Management (M8 Facility Booking)
+const CampusManagement = () => {
+  const [bookings, setBookings] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    fetch('/api/admin/campus/bookings')
+      .then(res => res.json())
+      .then(data => {
+        setBookings(data);
+        setLoading(false);
+      });
+  }, []);
+
+  const handleAction = async (id: number, action: 'approved' | 'rejected') => {
+    try {
+      const res = await fetch('/api/admin/campus/approve', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ bookingId: id, action, notes: `M8 Council ${action}` })
+      });
+      if (res.ok) {
+        setBookings(bookings.map(b => b.id === id ? { ...b, status: action } : b));
+        alert(`Booking ${id} ${action}.`);
+      }
+    } catch (err) {
+      console.error('Booking approval failed:', err);
+    }
+  };
+
+  if (loading) return <div className="p-8 text-center">Loading bookings...</div>;
+
+  return (
+    <div className="bg-white rounded-[2rem] border border-slate-100 overflow-hidden shadow-sm">
+      <div className="p-6 border-b border-slate-50 flex items-center justify-between bg-slate-50/50">
+        <h3 className="font-bold text-slate-900 flex items-center gap-2">
+          <Building2 className="text-amber-600" size={20} />
+          Campus Facility Management (M8)
+        </h3>
+      </div>
+      <div className="overflow-x-auto">
+        <table className="w-full text-left border-collapse">
+          <thead>
+            <tr className="bg-slate-50/50">
+              <th className="px-6 py-4 text-[10px] font-bold text-slate-400 uppercase tracking-widest">Booking ID</th>
+              <th className="px-6 py-4 text-[10px] font-bold text-slate-400 uppercase tracking-widest">User</th>
+              <th className="px-6 py-4 text-[10px] font-bold text-slate-400 uppercase tracking-widest">Resource</th>
+              <th className="px-6 py-4 text-[10px] font-bold text-slate-400 uppercase tracking-widest">Time</th>
+              <th className="px-6 py-4 text-[10px] font-bold text-slate-400 uppercase tracking-widest">Status</th>
+              <th className="px-6 py-4 text-[10px] font-bold text-slate-400 uppercase tracking-widest text-right">Actions</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-slate-50">
+            {bookings.map((booking) => (
+              <tr key={booking.id} className="hover:bg-slate-50/50 transition-all">
+                <td className="px-6 py-4 font-mono text-xs text-slate-500">#{booking.id}</td>
+                <td className="px-6 py-4 font-bold text-slate-900 text-sm">{booking.user_name || 'User ' + booking.userId}</td>
+                <td className="px-6 py-4 text-sm text-slate-600">{booking.resource_name || 'Resource ' + booking.resourceId}</td>
+                <td className="px-6 py-4 text-xs text-slate-500">
+                  {new Date(booking.startTime).toLocaleString()}
+                </td>
+                <td className="px-6 py-4">
+                  <span className={`px-2 py-1 rounded-lg text-[9px] font-bold uppercase tracking-wider ${
+                    booking.status === 'approved' ? 'bg-emerald-100 text-emerald-600' : 
+                    booking.status === 'rejected' ? 'bg-rose-100 text-rose-600' : 'bg-amber-100 text-amber-600'
+                  }`}>
+                    {booking.status}
+                  </span>
+                </td>
+                <td className="px-6 py-4 text-right">
+                  {booking.status === 'pending' && (
+                    <div className="flex items-center justify-end gap-2">
+                      <button 
+                        onClick={() => handleAction(booking.id, 'approved')}
+                        className="p-2 text-emerald-500 hover:bg-emerald-50 rounded-lg transition-all">
+                        <CheckCircle2 size={16} />
+                      </button>
+                      <button 
+                        onClick={() => handleAction(booking.id, 'rejected')}
+                        className="p-2 text-rose-500 hover:bg-rose-50 rounded-lg transition-all">
+                        <X size={16} />
+                      </button>
+                    </div>
+                  )}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+};
+
+// 8. Looker Studio Dashboard Embeds (M5 Phase 6)
 const LookerDashboard = ({ title, type }: { title: string, type: string }) => (
   <div className="bg-white rounded-[2rem] border border-slate-100 overflow-hidden shadow-sm h-[600px] flex flex-col">
     <div className="p-6 border-b border-slate-50 flex items-center justify-between bg-slate-50/50">
@@ -434,10 +636,12 @@ const LookerDashboard = ({ title, type }: { title: string, type: string }) => (
         <ShieldCheck size={12} /> Role-Gated: {type}
       </div>
     </div>
-    <div className="flex-1 bg-slate-50 flex items-center justify-center p-12 text-center">
+    <div 
+      onClick={() => alert("M5 Analytics: Opening Looker Studio Dashboard for " + title + ". Connecting to live M5 Master Ledger...")}
+      className="flex-1 bg-slate-50 flex items-center justify-center p-12 text-center cursor-pointer hover:bg-slate-100 transition-all">
       <div className="max-w-xs">
-        <div className="w-16 h-16 bg-white rounded-2xl shadow-sm flex items-center justify-center mx-auto mb-4">
-          <ExternalLink className="text-slate-300" size={32} />
+        <div className="w-16 h-16 bg-white rounded-2xl shadow-sm flex items-center justify-center mx-auto mb-4 group-hover:scale-110 transition-all">
+          <ExternalLink className="text-ngo-primary" size={32} />
         </div>
         <h4 className="text-slate-900 font-bold mb-2">Looker Studio Embed</h4>
         <p className="text-xs text-slate-500 leading-relaxed">
@@ -450,7 +654,7 @@ const LookerDashboard = ({ title, type }: { title: string, type: string }) => (
 
 // Main M8 Dashboard Component
 export const AdminDashboard = () => {
-  const [activeTab, setActiveTab] = useState<'overview' | 'ngos' | 'finance' | 'yuwa' | 'security' | 'staff_log'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'ngos' | 'finance' | 'yuwa' | 'security' | 'staff_log' | 'campus'>('overview');
   const [isInducted, setIsInducted] = useState(false);
   const [m5Status, setM5Status] = useState<M5Status>({
     webhookStatus: 'Green',
@@ -462,7 +666,9 @@ export const AdminDashboard = () => {
   const userId = 'ADMIN-001'; // Mocked for now
 
   const renderM5StatusWidget = () => (
-    <div className="bg-white p-4 rounded-[2rem] border border-slate-100 shadow-sm mb-8 flex items-center justify-between">
+    <div 
+      onClick={() => alert(`M5 Sync Report:\n- Webhook Status: ${m5Status.webhookStatus}\n- Zoho Invoices: ${m5Status.zohoInvoiceCount}/1000\n- Last Sync: ${new Date(m5Status.lastSync).toLocaleString()}\n- Active Bridge: Uncanny Automator`)}
+      className="bg-white p-4 rounded-[2rem] border border-slate-100 shadow-sm mb-8 flex items-center justify-between cursor-pointer hover:bg-slate-50 transition-all">
       <div className="flex items-center gap-6">
         <div className="flex items-center gap-2">
           <div className={`w-3 h-3 rounded-full ${m5Status.webhookStatus === 'Green' ? 'bg-emerald-500 animate-pulse' : 'bg-rose-500'}`} />
@@ -550,10 +756,22 @@ export const AdminDashboard = () => {
             <IndianRupee size={18} /> Financials
           </button>
           <button 
+            onClick={() => setActiveTab('security')}
+            className={`px-4 py-2 rounded-xl text-xs font-bold transition-all whitespace-nowrap ${activeTab === 'security' ? 'bg-ngo-primary text-white' : 'text-slate-500 hover:bg-slate-50'}`}
+          >
+            <ShieldAlert size={18} /> Security
+          </button>
+          <button 
             onClick={() => setActiveTab('staff_log')}
             className={`px-4 py-2 rounded-xl text-xs font-bold transition-all whitespace-nowrap ${activeTab === 'staff_log' ? 'bg-ngo-primary text-white' : 'text-slate-500 hover:bg-slate-50'}`}
           >
             <AlertTriangle size={18} /> Staff Log
+          </button>
+          <button 
+            onClick={() => setActiveTab('campus')}
+            className={`px-4 py-2 rounded-xl text-xs font-bold transition-all whitespace-nowrap ${activeTab === 'campus' ? 'bg-ngo-primary text-white' : 'text-slate-500 hover:bg-slate-50'}`}
+          >
+            <Building2 size={18} /> Campus
           </button>
         </div>
       </div>
@@ -565,7 +783,9 @@ export const AdminDashboard = () => {
           {activeTab === 'overview' && (
             <>
               <div className="grid md:grid-cols-2 gap-8">
-                <div className="bg-gradient-to-br from-indigo-600 to-indigo-700 p-8 rounded-[3rem] text-white shadow-lg shadow-indigo-200 relative overflow-hidden group">
+                <div 
+                  onClick={() => alert("M5 Impact Breakdown:\nM1 Healthcare: 4,200\nM3 Education: 3,800\nM6 Yuwa: 2,440\nM7 Donations: 4,800\nTotal: 15,240 Impact Units")}
+                  className="bg-gradient-to-br from-indigo-600 to-indigo-700 p-8 rounded-[3rem] text-white shadow-lg shadow-indigo-200 relative overflow-hidden group cursor-pointer">
                   <div className="relative z-10">
                     <h4 className="text-indigo-100 text-[10px] font-bold uppercase tracking-widest mb-2">Total Impact Units</h4>
                     <div className="text-4xl font-bold mb-4">15,240+</div>
@@ -575,7 +795,9 @@ export const AdminDashboard = () => {
                   </div>
                   <Zap className="absolute -right-4 -bottom-4 text-white/10 group-hover:scale-110 transition-all" size={120} />
                 </div>
-                <div className="bg-white p-8 rounded-[3rem] border border-slate-100 shadow-sm flex flex-col justify-between">
+                <div 
+                  onClick={() => alert("M8 System Health Report:\n- DPDP Compliance: Verified\n- M5 Webhook: Active\n- Audit Trail: Syncing\n- SSL/Encryption: Active\nStatus: All Systems Operational")}
+                  className="bg-white p-8 rounded-[3rem] border border-slate-100 shadow-sm flex flex-col justify-between cursor-pointer hover:bg-slate-50 transition-all">
                   <div>
                     <h4 className="text-slate-400 text-[10px] font-bold uppercase tracking-widest mb-2">System Health</h4>
                     <div className="flex items-center gap-2 text-emerald-600 font-bold mb-4">
@@ -601,7 +823,41 @@ export const AdminDashboard = () => {
           {activeTab === 'ngos' && <NGOOnboardingQueue />}
           {activeTab === 'yuwa' && <YuwaRankedDashboard />}
           {activeTab === 'finance' && <FinancialLedger />}
+          {activeTab === 'security' && (
+            <div className="space-y-8">
+              <div className="bg-white p-8 rounded-[3rem] border border-slate-100 shadow-sm">
+                <h3 className="text-xl font-bold text-slate-900 mb-6 flex items-center gap-2">
+                  <ShieldCheck className="text-emerald-600" />
+                  M8 Security & DPDP Compliance Hub
+                </h3>
+                <div className="grid md:grid-cols-2 gap-8">
+                  <div className="p-6 bg-slate-50 rounded-2xl border border-slate-100">
+                    <h4 className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-4">Data Shredder Status</h4>
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="text-sm font-bold text-slate-900">Auto-Shredder (Form 28-B)</span>
+                      <span className="px-2 py-1 bg-emerald-100 text-emerald-600 rounded-lg text-[10px] font-bold">ACTIVE</span>
+                    </div>
+                    <p className="text-[10px] text-slate-500 leading-relaxed">
+                      All PII data marked for erasure is automatically shredded after the 15-day cooling period.
+                    </p>
+                  </div>
+                  <div className="p-6 bg-slate-50 rounded-2xl border border-slate-100">
+                    <h4 className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-4">Encryption Status</h4>
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="text-sm font-bold text-slate-900">AES-256 Field Level</span>
+                      <span className="px-2 py-1 bg-emerald-100 text-emerald-600 rounded-lg text-[10px] font-bold">ACTIVE</span>
+                    </div>
+                    <p className="text-[10px] text-slate-500 leading-relaxed">
+                      All Govt IDs and PII are encrypted at rest using the M8 Secure Vault protocol.
+                    </p>
+                  </div>
+                </div>
+              </div>
+              <LookerDashboard title="Security & Audit Analytics" type="Security Admin" />
+            </div>
+          )}
           {activeTab === 'staff_log' && <StaffIncidentLog userRole={userRole} userId={userId} />}
+          {activeTab === 'campus' && <CampusManagement />}
         </div>
 
         <div className="space-y-8">
@@ -615,7 +871,9 @@ export const AdminDashboard = () => {
             <p className="text-xs text-rose-700 mb-4 leading-relaxed">
               Form 28-B requests for data erasure. <strong>15-day SLA active.</strong>
             </p>
-            <button className="w-full py-3 bg-rose-600 text-white text-xs font-bold rounded-xl hover:bg-rose-700 transition-all">
+            <button 
+              onClick={() => alert("M8 Security: Accessing Form 28-B Data Erasure Requests. 15-day SLA monitoring active.")}
+              className="w-full py-3 bg-rose-600 text-white text-xs font-bold rounded-xl hover:bg-rose-700 transition-all">
               View 3 Pending Requests
             </button>
           </div>
@@ -627,11 +885,14 @@ export const AdminDashboard = () => {
             </h3>
             <div className="space-y-4">
               {[
-                { action: 'Role Update', user: 'Admin_01', time: '2m ago' },
-                { action: 'TXN Approved', user: 'Admin_01', time: '15m ago' },
-                { action: 'NGO Verified', user: 'Admin_02', time: '1h ago' }
+                { action: 'Role Update', user: 'Admin_01', time: '2m ago', details: 'Jury J-01 role changed to M6_JURY_ALUMNI' },
+                { action: 'TXN Approved', user: 'Admin_01', time: '15m ago', details: 'Transaction TXN-9903 approved for payout' },
+                { action: 'NGO Verified', user: 'Admin_02', time: '1h ago', details: 'NGO-001 Rural Health Initiative verified' }
               ].map((log, i) => (
-                <div key={i} className="flex items-center justify-between text-[10px]">
+                <div 
+                  key={i} 
+                  onClick={() => alert(`M8 Audit Trail: ${log.action} by ${log.user} (${log.time})\nDetails: ${log.details}`)}
+                  className="flex items-center justify-between text-[10px] p-2 hover:bg-slate-50 rounded-lg cursor-pointer transition-all border border-transparent hover:border-slate-100">
                   <span className="font-bold text-slate-900 uppercase tracking-wider">{log.action}</span>
                   <span className="text-slate-400">{log.user} • {log.time}</span>
                 </div>

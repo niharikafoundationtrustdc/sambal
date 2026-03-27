@@ -4,13 +4,37 @@ import path from 'path';
 import fs from 'fs';
 import Database from 'better-sqlite3';
 import crypto from 'crypto';
+import multer from 'multer';
 
 const app = express();
 const PORT = 3000;
 const db = new Database('sambal.db');
 
+// Ensure uploads directory exists
+const uploadsDir = path.join(process.cwd(), 'uploads');
+if (!fs.existsSync(uploadsDir)) {
+  fs.mkdirSync(uploadsDir);
+}
+
+// Configure Multer for file uploads
+const storage = multer.diskStorage({
+  destination: (req, file, cb) => {
+    cb(null, 'uploads/');
+  },
+  filename: (req, file, cb) => {
+    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+    cb(null, file.fieldname + '-' + uniqueSuffix + path.extname(file.originalname));
+  }
+});
+
+const upload = multer({ 
+  storage: storage,
+  limits: { fileSize: 10 * 1024 * 1024 } // 10MB limit
+});
+
 // Middleware
 app.use(express.json());
+app.use('/uploads', express.static('uploads'));
 
 // Encryption Helper
 const ENCRYPTION_KEY = process.env.ENCRYPTION_KEY || 'default_secret_key_32_chars_long';
@@ -892,15 +916,52 @@ app.post('/api/campus/book', (req, res) => {
   }
 });
 
+// M5 Master Ledger Webhook (Phase 1)
 app.post('/api/m5/webhook', (req, res) => {
-  const { form_id, payload, secure_url } = req.body;
+  const { formId, form_id, data, payload, metadata, secure_url } = req.body;
+  const finalFormId = formId || form_id || 'UNKNOWN_FORM';
+  const finalData = data || payload || {};
+  
+  console.log(`[M5 Webhook] Routing Form ${finalFormId} to Master Ledger...`);
+  
   try {
-    const stmt = db.prepare('INSERT INTO m5_master_ledger (module, action, details) VALUES (?, ?, ?)');
-    stmt.run(form_id, 'WEBHOOK_LOG', JSON.stringify({ payload, secure_url }));
-    res.json({ status: 'success' });
-  } catch (err: any) {
-    res.status(500).json({ status: 'error', error: err.message });
+    const insertLedger = db.prepare('INSERT INTO m5_master_ledger (module, action, details) VALUES (?, ?, ?)');
+    insertLedger.run(finalFormId, 'WEBHOOK_PUSH', JSON.stringify({ ...finalData, ...metadata, secure_url }));
+    
+    // Internal Routing Logic (Phase 1.2)
+    if (finalFormId === 'M7_Donation' || finalFormId === 'M7_GENERAL_DONATION') {
+      const insertFinancial = db.prepare('INSERT INTO financial_ledger (type, amount, description) VALUES (?, ?, ?)');
+      insertFinancial.run('DONATION', finalData.amount || 0, `Donation from ${finalData.email || 'Anonymous'}`);
+    } else if (finalFormId === 'M6_Award_Nomination' || finalFormId === 'M11_NOMINATION') {
+      const insertYuwa = db.prepare('INSERT INTO yuwa_ledger (userId, points, action) VALUES (?, ?, ?)');
+      insertYuwa.run(finalData.userId || 0, 0, 'NOMINATION_RECEIVED');
+    } else if (finalFormId === 'M4_NGO_VERIFICATION') {
+      db.prepare('UPDATE ngos SET status = ? WHERE id = ?').run(finalData.status, finalData.ngoId);
+    } else if (finalFormId === 'M7_FINANCIAL_APPROVAL') {
+      // Logic for financial approval can be added here if needed to update specific tables
+    }
+    
+    res.json({ status: 'success', message: 'Data routed to M5 Ledger' });
+  } catch (error: any) {
+    console.error('M5 Webhook Error:', error);
+    res.status(500).json({ status: 'error', message: error.message });
   }
+});
+
+// File Upload Endpoint
+app.post('/api/upload', upload.single('file'), (req, res) => {
+  if (!req.file) {
+    return res.status(400).json({ error: 'No file uploaded' });
+  }
+  
+  const fileUrl = `/uploads/${req.file.filename}`;
+  res.json({ 
+    status: 'success', 
+    url: fileUrl,
+    filename: req.file.originalname,
+    mimetype: req.file.mimetype,
+    size: req.file.size
+  });
 });
 
 app.post('/api/homework-helpdesk', (req, res) => {
@@ -1229,28 +1290,29 @@ app.post('/api/m12/event-rsvp', (req, res) => {
   }
 });
 
-// M5 Master Ledger Webhook (Phase 1)
-app.post('/api/m5/webhook', (req, res) => {
-  const { formId, data, metadata } = req.body;
-  console.log(`[M5 Webhook] Routing Form ${formId} to Master Ledger...`);
-  
+app.get('/api/admin/campus/bookings', (req, res) => {
   try {
-    const insertLedger = db.prepare('INSERT INTO m5_master_ledger (module, action, details) VALUES (?, ?, ?)');
-    insertLedger.run(formId, 'WEBHOOK_PUSH', JSON.stringify({ ...data, ...metadata }));
-    
-    // Internal Routing Logic (Phase 1.2)
-    if (formId === 'M7_Donation') {
-      const insertFinancial = db.prepare('INSERT INTO financial_ledger (type, amount, description) VALUES (?, ?, ?)');
-      insertFinancial.run('DONATION', data.amount, `Donation from ${data.email}`);
-    } else if (formId === 'M6_Award_Nomination') {
-      const insertYuwa = db.prepare('INSERT INTO yuwa_ledger (userId, points, action) VALUES (?, ?, ?)');
-      insertYuwa.run(data.userId, 0, 'NOMINATION_RECEIVED');
-    }
-    
-    res.json({ status: 'success', message: 'Data routed to M5 Ledger' });
-  } catch (error: any) {
-    console.error('M5 Webhook Error:', error);
-    res.status(500).json({ status: 'error', message: error.message });
+    const bookings = db.prepare(`
+      SELECT b.*, u.displayName as user_name, r.name as resource_name
+      FROM campus_bookings b
+      LEFT JOIN users u ON b.userId = u.id
+      LEFT JOIN campus_resources r ON b.resourceId = r.id
+      ORDER BY b.startTime DESC
+    `).all();
+    res.json(bookings);
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.post('/api/admin/campus/approve', (req, res) => {
+  const { bookingId, action, notes } = req.body;
+  try {
+    db.prepare('UPDATE campus_bookings SET status = ? WHERE id = ?').run(action, bookingId);
+    db.prepare('INSERT INTO admin_audit_log (adminId, action, details) VALUES (?, ?, ?)').run(1, 'CAMPUS_BOOKING_APPROVE', `Booking ${bookingId} ${action}: ${notes}`);
+    res.json({ status: 'success' });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
   }
 });
 

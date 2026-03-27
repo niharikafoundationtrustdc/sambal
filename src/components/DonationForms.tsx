@@ -49,14 +49,31 @@ export const GeneralDonationForm = ({ onSuccess }: { onSuccess?: () => void }) =
     if (!formData.consent) return alert("Please provide DPDP consent.");
     
     setIsSubmitting(true);
-    // Simulate Razorpay Metadata Routing: Module=M7_Donation
-    console.log("Routing to Razorpay with Metadata: Module=M7_Donation", formData);
     
-    setTimeout(() => {
+    try {
+      // M5 Webhook: Log General Donation
+      await fetch('/api/m5/webhook', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          form_id: 'M7_GENERAL_DONATION',
+          payload: { ...formData, action: 'donation_initiate' },
+          secure_url: '/donate'
+        })
+      });
+
+      // Simulate Razorpay Metadata Routing
+      console.log("Routing to Razorpay with Metadata: Module=M7_Donation", formData);
+      
+      setTimeout(() => {
+        setIsSubmitting(false);
+        alert("Redirecting to Secure Razorpay Gateway (INR Only)...");
+        onSuccess?.();
+      }, 1500);
+    } catch (error) {
+      console.error('Donation log failed:', error);
       setIsSubmitting(false);
-      alert("Redirecting to Secure Razorpay Gateway (INR Only)...");
-      onSuccess?.();
-    }, 1500);
+    }
   };
 
   return (
@@ -180,6 +197,28 @@ export const SponsorshipForm = ({ onSuccess }: { onSuccess?: () => void }) => {
     asha: { title: "Train an ASHA Worker", amount: 3500, desc: "One-time unit grant for professional certification." }
   };
 
+  const handleSponsorship = async () => {
+    if (!consent) return alert("Please provide DPDP consent.");
+    
+    try {
+      // M5 Webhook: Log Sponsorship
+      await fetch('/api/m5/webhook', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          form_id: 'M7_SPONSORSHIP',
+          payload: { tier, ...tiers[tier], action: 'sponsorship_initiate' },
+          secure_url: '/donate'
+        })
+      });
+
+      alert(`Activating Razorpay ${tier === 'asha' ? 'Payment Page' : 'Subscription'}...`);
+      onSuccess?.();
+    } catch (error) {
+      console.error('Sponsorship log failed:', error);
+    }
+  };
+
   return (
     <div className="space-y-8">
       <div className="grid gap-4">
@@ -206,7 +245,7 @@ export const SponsorshipForm = ({ onSuccess }: { onSuccess?: () => void }) => {
       <DPDPConsent checked={consent} onChange={setConsent} />
 
       <button 
-        onClick={() => alert(`Activating Razorpay ${tier === 'asha' ? 'Payment Page' : 'Subscription'}...`)}
+        onClick={handleSponsorship}
         className="w-full bg-slate-900 text-white py-4 rounded-2xl font-bold shadow-lg hover:bg-slate-800 transition-all flex items-center justify-center gap-2"
       >
         Activate Recurring Support <Zap size={18} className="text-amber-400" />
@@ -218,6 +257,28 @@ export const SponsorshipForm = ({ onSuccess }: { onSuccess?: () => void }) => {
 // 3. Wish-Tree Support Form (M7 Phase 3)
 export const WishTreeForm = ({ item, onSuccess }: { item: any, onSuccess?: () => void }) => {
   const [consent, setConsent] = useState(false);
+
+  const handleFund = async () => {
+    if (!consent) return alert("Please provide DPDP consent.");
+    
+    try {
+      // M5 Webhook: Log Wish Fulfillment
+      await fetch('/api/m5/webhook', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          form_id: 'M7_WISH_FULFILLMENT',
+          payload: { item_id: item.id, item_title: item.title, action: 'wish_fund' },
+          secure_url: '/donate'
+        })
+      });
+
+      alert("M5 Ledger Script: Updating item status to 'Funded'...");
+      onSuccess?.();
+    } catch (error) {
+      console.error('Wish fulfillment log failed:', error);
+    }
+  };
 
   return (
     <div className="space-y-6">
@@ -236,10 +297,7 @@ export const WishTreeForm = ({ item, onSuccess }: { item: any, onSuccess?: () =>
       <DPDPConsent checked={consent} onChange={setConsent} />
 
       <button 
-        onClick={() => {
-          alert("M5 Ledger Script: Updating item status to 'Funded'...");
-          onSuccess?.();
-        }}
+        onClick={handleFund}
         className="w-full bg-emerald-600 text-white py-4 rounded-2xl font-bold shadow-lg hover:bg-emerald-700 transition-all"
       >
         Fund This Item Now
@@ -252,12 +310,31 @@ export const WishTreeForm = ({ item, onSuccess }: { item: any, onSuccess?: () =>
 export const CorporateIntakeForm = ({ onSuccess }: { onSuccess?: () => void }) => {
   const [consent, setConsent] = useState(false);
 
-  return (
-    <form className="space-y-6" onSubmit={(e) => {
-      e.preventDefault();
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!consent) return alert("Please provide DPDP consent.");
+
+    try {
+      // M5 Webhook: Log Corporate Inquiry
+      await fetch('/api/m5/webhook', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          form_id: 'M7_CORPORATE_INQUIRY',
+          payload: { action: 'corporate_submit' },
+          secure_url: '/donate'
+        })
+      });
+
       alert("Routing to M7_Corporate_Leads in M5 Ledger. Alerting Management Council...");
       onSuccess?.();
-    }}>
+    } catch (error) {
+      console.error('Corporate inquiry log failed:', error);
+    }
+  };
+
+  return (
+    <form className="space-y-6" onSubmit={handleSubmit}>
       <div className="grid md:grid-cols-2 gap-4">
         <div>
           <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2">Company Name</label>
@@ -288,6 +365,28 @@ export const CorporateIntakeForm = ({ onSuccess }: { onSuccess?: () => void }) =
 export const FastTrackFeeForm = ({ onSuccess }: { onSuccess?: () => void }) => {
   const [consent, setConsent] = useState(false);
 
+  const handlePay = async () => {
+    if (!consent) return alert("Please provide DPDP consent.");
+
+    try {
+      // M5 Webhook: Log Fast-Track Fee
+      await fetch('/api/m5/webhook', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          form_id: 'M3_FASTTRACK_FEE',
+          payload: { action: 'fee_initiate' },
+          secure_url: '/lms'
+        })
+      });
+
+      alert("Routing to Razorpay: Module=M3_FastTrack");
+      onSuccess?.();
+    } catch (error) {
+      console.error('Fast-track fee log failed:', error);
+    }
+  };
+
   return (
     <div className="space-y-6">
       <div className="p-6 bg-amber-50 rounded-[2rem] border border-amber-100">
@@ -305,7 +404,7 @@ export const FastTrackFeeForm = ({ onSuccess }: { onSuccess?: () => void }) => {
       </div>
       <DPDPConsent checked={consent} onChange={setConsent} />
       <button 
-        onClick={() => alert("Routing to Razorpay: Module=M3_FastTrack")}
+        onClick={handlePay}
         className="w-full bg-amber-600 text-white py-4 rounded-2xl font-bold shadow-lg hover:bg-amber-700 transition-all"
       >
         Pay Fast-Track Fee

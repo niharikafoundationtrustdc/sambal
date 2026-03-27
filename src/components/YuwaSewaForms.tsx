@@ -13,6 +13,7 @@ import {
   Zap,
   Video
 } from 'lucide-react';
+import FileUpload from './FileUpload';
 
 // DPDP Consent Checkbox Component (Reused from M7)
 const DPDPConsent = ({ checked, onChange }: { checked: boolean, onChange: (val: boolean) => void }) => (
@@ -42,16 +43,38 @@ export const YuwaApplicationForm = ({ onSuccess }: { onSuccess?: () => void }) =
     recommenderName: '',
     recommenderDesignation: '',
     recommenderPhone: '',
-    consent: false
+    consent: false,
+    proofUrl: '',
+    govtIdUrl: '',
+    recommendationLetterUrl: ''
   });
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     const age = parseInt(formData.age);
     if (age < 18 || age > 45) return alert("Age must be between 18 and 45 years.");
     if (!formData.consent) return alert("Please provide DPDP consent.");
+    if (!formData.proofUrl || !formData.govtIdUrl || !formData.recommendationLetterUrl) {
+      return alert("Please upload all required documents.");
+    }
     
     alert("Application Submitted! Documents routed to /private/ vault. Status: Pending_Verification.");
+    
+    // M5 Webhook: Log Yuwa Nomination
+    try {
+      await fetch('/api/m5/webhook', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          form_id: 'M6_Award_Nomination',
+          payload: { ...formData, adminId: 'SYSTEM' },
+          secure_url: '/yuwa-sewa-samman'
+        })
+      });
+    } catch (err) {
+      console.error('M5 Yuwa Nomination Log Failed:', err);
+    }
+
     onSuccess?.();
   };
 
@@ -75,24 +98,18 @@ export const YuwaApplicationForm = ({ onSuccess }: { onSuccess?: () => void }) =
         </div>
       </div>
 
-      <div className="grid md:grid-cols-2 gap-4">
-        <div>
-          <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2">Proof of Service (PDF/JPG)</label>
-          <div className="relative">
-            <Upload className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
-            <input type="file" required className="w-full pl-12 pr-6 py-4 rounded-2xl bg-slate-100 border-none text-xs file:hidden" />
-          </div>
-        </div>
-        <div>
-          <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2">Government ID (Private Vault)</label>
-          <div className="relative">
-            <ShieldCheck className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
-            <input type="file" required className="w-full pl-12 pr-6 py-4 rounded-2xl bg-slate-100 border-none text-xs file:hidden" />
-          </div>
-        </div>
+      <div className="grid md:grid-cols-2 gap-6">
+        <FileUpload 
+          label="Proof of Service (PDF/JPG)"
+          onUpload={(url) => setFormData({...formData, proofUrl: url})}
+        />
+        <FileUpload 
+          label="Government ID (Private Vault)"
+          onUpload={(url) => setFormData({...formData, govtIdUrl: url})}
+        />
       </div>
 
-      <div className="p-6 bg-slate-50 rounded-[2rem] border border-slate-100 space-y-4">
+      <div className="p-6 bg-slate-50 rounded-[2rem] border border-slate-100 space-y-6">
         <h4 className="text-xs font-bold text-slate-900 uppercase tracking-widest flex items-center gap-2">
           <UserCheck size={16} className="text-ngo-primary" />
           Recommending Authority (Mandatory)
@@ -101,10 +118,10 @@ export const YuwaApplicationForm = ({ onSuccess }: { onSuccess?: () => void }) =
           <input type="text" placeholder="Name (e.g. Gram Pradhan)" required className="w-full px-6 py-4 rounded-2xl bg-white border border-slate-200 text-sm" value={formData.recommenderName} onChange={e => setFormData({...formData, recommenderName: e.target.value})} />
           <input type="text" placeholder="Designation" required className="w-full px-6 py-4 rounded-2xl bg-white border border-slate-200 text-sm" value={formData.recommenderDesignation} onChange={e => setFormData({...formData, recommenderDesignation: e.target.value})} />
         </div>
-        <div>
-          <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2">Official Recommendation Letter (Signed)</label>
-          <input type="file" required className="w-full px-6 py-4 rounded-2xl bg-white border border-slate-200 text-xs file:hidden" />
-        </div>
+        <FileUpload 
+          label="Official Recommendation Letter (Signed)"
+          onUpload={(url) => setFormData({...formData, recommendationLetterUrl: url})}
+        />
       </div>
 
       <DPDPConsent checked={formData.consent} onChange={val => setFormData({...formData, consent: val})} />
