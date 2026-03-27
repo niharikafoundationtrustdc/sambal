@@ -1,0 +1,84 @@
+{
+  "entities": {
+    "User": {
+      "title": "User Profile",
+      "description": "Stores user role and basic profile information.",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string", "description": "Firebase Auth UID" },
+        "email": { "type": "string", "format": "email" },
+        "displayName": { "type": "string" },
+        "role": { 
+          "type": "string", 
+          "enum": ["Super_Admin", "admin", "Expert", "Researcher", "Intern", "STUDENT", "User"] 
+        },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["uid", "email", "role"]
+    },
+    "SAMBALRecord": {
+      "title": "SAMBAL M5 Ledger Record",
+      "description": "A form submission record in the M5 Master Ledger.",
+      "type": "object",
+      "properties": {
+        "uin": { "type": "string", "description": "Unique Identification Number" },
+        "branchId": { "type": "string" },
+        "formId": { "type": "string" },
+        "timestamp": { "type": "string", "format": "date-time" },
+        "status": { 
+          "type": "string", 
+          "enum": ["Pending", "Approved", "Rejected", "More Info Required"] 
+        },
+        "data": { "type": "object", "description": "The raw form data payload" },
+        "decisionOfficerUin": { "type": "string" },
+        "decisionTimestamp": { "type": "string", "format": "date-time" },
+        "adminRemarks": { "type": "string" }
+      },
+      "required": ["uin", "formId", "timestamp", "status", "data"]
+    },
+    "WishItem": {
+      "title": "Digital Wish-Tree Item",
+      "description": "An urgent need item for the M7 Wish-Tree.",
+      "type": "object",
+      "properties": {
+        "title": { "type": "string" },
+        "description": { "type": "string" },
+        "category": { "type": "string" },
+        "urgency": { "type": "string", "enum": ["Urgent", "Normal"] },
+        "status": { "type": "string", "enum": ["Available", "Pending", "Fulfilled"] },
+        "fulfilledBy": { "type": "string", "description": "UID of the donor" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["title", "description", "category", "urgency", "status"]
+    },
+    "ImpactStat": {
+      "title": "Impact Pulse Statistic",
+      "description": "Aggregated impact metrics for the live ticker.",
+      "type": "object",
+      "properties": {
+        "key": { "type": "string" },
+        "value": { "type": "number" },
+        "label": { "type": "string" }
+      },
+      "required": ["key", "value", "label"]
+    }
+  },
+  "firestore": {
+    "/users/{uid}": {
+      "schema": "User",
+      "description": "User profile documents"
+    },
+    "/records/{recordId}": {
+      "schema": "SAMBALRecord",
+      "description": "M5 Ledger form submissions"
+    },
+    "/wishes/{wishId}": {
+      "schema": "WishItem",
+      "description": "M7 Wish-Tree items"
+    },
+    "/stats/{statId}": {
+      "schema": "ImpactStat",
+      "description": "Aggregated impact statistics"
+    }
+  }
+}

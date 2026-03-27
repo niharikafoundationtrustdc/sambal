@@ -1,0 +1,51 @@
+@import "tailwindcss";
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Playfair+Display:ital,wght@0,400..900;1,400..900&family=JetBrains+Mono:wght@400;500&display=swap');
+
+@theme {
+  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
+  --font-serif: "Playfair Display", serif;
+  --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, monospace;
+
+  --color-ngo-primary: #1a4d2e;
+  --color-ngo-secondary: #4f6f52;
+  --color-ngo-accent: #e8dfca;
+  --color-ngo-warm: #f5efe6;
+}
+
+@layer base {
+  body {
+    @apply bg-ngo-warm text-slate-900 font-sans;
+  }
+}
+
+/* Calm Mode: Reduced visual noise for neurodivergent users */
+.calm-mode {
+  --color-ngo-primary: #64748b; /* Muted slate */
+  --color-ngo-secondary: #94a3b8;
+  --color-ngo-warm: #f8fafc;
+  filter: saturate(0.8) contrast(0.9);
+}
+
+.calm-mode * {
+  animation: none !important;
+  transition-duration: 0.4s !important;
+}
+
+.calm-mode .animate-pulse,
+.calm-mode .animate-ping,
+.calm-mode .animate-spin {
+  animation: none !important;
+}
+
+.calm-mode img {
+  filter: grayscale(0.2);
+}
+
+.calm-mode .shadow-2xl,
+.calm-mode .shadow-xl {
+  box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1) !important;
+}
+
+.glass-card {
+  @apply bg-white/80 backdrop-blur-md border border-white/20 shadow-lg;
+}

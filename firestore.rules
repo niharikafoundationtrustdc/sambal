@@ -1,0 +1,163 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ===============================================================
+    // Assumed Data Model
+    // ===============================================================
+    //
+    // Collection: users
+    // Document ID: {uid} (Firebase Auth UID)
+    // Fields:
+    //   - uid: string (required, immutable) - Firebase Auth UID
+    //   - email: string (required, format: email) - User's email
+    //   - displayName: string (optional) - User's display name
+    //   - role: string (required, enum: Super_Admin, admin, Expert, Researcher, Intern, STUDENT, User) - User's role
+    //   - createdAt: timestamp (optional, immutable) - Account creation time
+    //
+    // Collection: records
+    // Document ID: {recordId} (Unique ID)
+    // Fields:
+    //   - uin: string (required, immutable) - Unique Identification Number
+    //   - branchId: string (optional) - Branch ID
+    //   - formId: string (required, immutable) - Form ID
+    //   - timestamp: timestamp (required, immutable) - Submission time
+    //   - status: string (required, enum: Pending, Approved, Rejected, More Info Required) - Record status
+    //   - data: map (required) - Raw form data payload
+    //   - decisionOfficerUin: string (optional) - UIN of the proctoring officer
+    //   - decisionTimestamp: timestamp (optional) - Time of decision
+    //   - adminRemarks: string (optional, max 1000 chars) - Admin remarks
+    //
+    // Collection: wishes
+    // Document ID: {wishId} (Unique ID)
+    // Fields:
+    //   - title: string (required, max 100 chars) - Wish title
+    //   - description: string (required, max 500 chars) - Wish description
+    //   - category: string (required) - Wish category
+    //   - urgency: string (required, enum: Urgent, Normal) - Urgency level
+    //   - status: string (required, enum: Available, Pending, Fulfilled) - Wish status
+    //   - fulfilledBy: string (optional) - UID of the donor
+    //   - createdAt: timestamp (required, immutable) - Creation time
+    //
+    // Collection: stats
+    // Document ID: {statId} (Unique ID)
+    // Fields:
+    //   - key: string (required, immutable) - Stat key
+    //   - value: number (required) - Stat value
+    //   - label: string (required) - Stat label
+    //
+    // ===============================================================
+
+    // ===============================================================
+    // Helper Functions
+    // ===============================================================
+
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+
+    function isAdmin() {
+      return isAuthenticated() &&
+        (get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role in ['Super_Admin', 'admin'] ||
+          (request.auth.token.email == "niharikafoundationtrust@gmail.com" && request.auth.token.email_verified == true));
+    }
+
+    function isExpert() {
+      return isAuthenticated() && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'Expert';
+    }
+
+    function isValidEmail(email) {
+      return email is string && email.matches("^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$");
+    }
+
+    function hasOnlyAllowedFields(fields) {
+      return request.resource.data.keys().hasOnly(fields);
+    }
+
+    function hasRequiredFields(fields) {
+      return request.resource.data.keys().hasAll(fields);
+    }
+
+    // ===============================================================
+    // Domain Validators
+    // ===============================================================
+
+    function isValidUser(data) {
+      return hasRequiredFields(['uid', 'email', 'role']) &&
+             hasOnlyAllowedFields(['uid', 'email', 'displayName', 'role', 'createdAt']) &&
+             data.uid == request.auth.uid &&
+             isValidEmail(data.email) &&
+             data.role in ['Super_Admin', 'admin', 'Expert', 'Researcher', 'Intern', 'STUDENT', 'User'] &&
+             (data.role == 'User' || isAdmin()); // Only admin can assign roles other than 'User'
+    }
+
+    function isValidRecord(data) {
+      return hasRequiredFields(['uin', 'formId', 'timestamp', 'status', 'data']) &&
+             hasOnlyAllowedFields(['uin', 'branchId', 'formId', 'timestamp', 'status', 'data', 'decisionOfficerUin', 'decisionTimestamp', 'adminRemarks']) &&
+             data.status in ['Pending', 'Approved', 'Rejected', 'More Info Required'] &&
+             data.data is map;
+    }
+
+    function isValidWish(data) {
+      return hasRequiredFields(['title', 'description', 'category', 'urgency', 'status', 'createdAt']) &&
+             hasOnlyAllowedFields(['title', 'description', 'category', 'urgency', 'status', 'fulfilledBy', 'createdAt']) &&
+             data.title is string && data.title.size() <= 100 &&
+             data.description is string && data.description.size() <= 500 &&
+             data.urgency in ['Urgent', 'Normal'] &&
+             data.status in ['Available', 'Pending', 'Fulfilled'] &&
+             data.createdAt is timestamp;
+    }
+
+    function isValidStat(data) {
+      return hasRequiredFields(['key', 'value', 'label']) &&
+             hasOnlyAllowedFields(['key', 'value', 'label']) &&
+             data.key is string &&
+             data.value is number &&
+             data.label is string;
+    }
+
+    // ===============================================================
+    // Rules
+    // ===============================================================
+
+    // Default deny
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // Users Collection
+    match /users/{userId} {
+      allow read: if isOwner(userId) || isAdmin();
+      allow create: if isAuthenticated() && isValidUser(request.resource.data);
+      allow update: if isAuthenticated() && isValidUser(request.resource.data) && 
+                      (isOwner(userId) && request.resource.data.role == resource.data.role || isAdmin());
+    }
+
+    // Records Collection (M5 Ledger)
+    match /records/{recordId} {
+      allow read: if isAdmin() || isExpert();
+      allow create: if isAuthenticated() && isValidRecord(request.resource.data);
+      allow update: if (isAdmin() || isExpert()) && isValidRecord(request.resource.data);
+    }
+
+    // Wishes Collection (M7 Wish-Tree)
+    match /wishes/{wishId} {
+      allow read: if isAuthenticated();
+      allow create: if isAdmin() && isValidWish(request.resource.data);
+      allow update: if isAuthenticated() && isValidWish(request.resource.data) &&
+                      (isAdmin() || (request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'fulfilledBy']) && 
+                                     request.resource.data.status == 'Pending' && 
+                                     request.resource.data.fulfilledBy == request.auth.uid));
+    }
+
+    // Stats Collection
+    match /stats/{statId} {
+      allow read: if true; // Publicly readable for the live ticker
+      allow write: if isAdmin();
+    }
+  }
+}

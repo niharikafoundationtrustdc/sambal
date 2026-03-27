@@ -1,0 +1,7 @@
+{
+  "name": "Remix: SAMBAL National Nodal Hub",
+  "description": "National facilitation hub for NGO connections, expert proctoring, and verified social impact tracking.",
+  "requestFramePermissions": [
+    "geolocation"
+  ]
+}

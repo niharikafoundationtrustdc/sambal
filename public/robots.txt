@@ -1,0 +1,6 @@
+User-agent: *
+Disallow: /impact
+Disallow: /researcher-portal
+Disallow: /api/admin/
+Disallow: /api/researcher/
+Sitemap: https://ais-pre-ds7jyusezimtov2cyvsovb-63325504403.asia-east1.run.app/sitemap.xml
